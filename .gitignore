@@ -154,7 +154,6 @@ target/
 .ipynb_checkpoints/
 
 # exclude data from source control by default
-# but include the processed directory
 /data
 
 # Mac OS-specific storage files

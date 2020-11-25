@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 from PIL import Image
+from repath.utils.geometry import Point, Size
 
-from repath.util.geometry import Point, Size, Address
 
 class Region:
     level: int
@@ -13,7 +13,37 @@ class Region:
     size: Size
 
 
-class SlideABC(metaclass=ABC):
+class SlideImageABC(metaclass=ABCMeta):
+    @abstractmethod
+    def get_thumbnail(self, level: int) -> np.array:
+        """Create a thumbnail of the image at a specific level.
+
+        Args:
+            level (int): The level that you want all the pixels at.
+
+        Raises:
+            NotImplementedError: This is an abstract base class so there is no implementation.
+
+        Returns:
+            np.array: Returns a numpy array with dimesions rows x columns x 3 channels (0-255)
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def dimensions(self) -> List[Size]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def read_region(self, region: Region) -> Image:
+        raise NotImplementedError
+
+    @abstractmethod
+    def read_regions(self, regions: List[Region]) -> Image:
+        raise NotImplementedError
+
+
+class SlideABC(metaclass=ABCMeta):
     """
     The Slide abstract base class defines the methodsthat all slide objects
     should implement in order to be compatable with the rest of the pipeline.
@@ -40,38 +70,9 @@ class SlideABC(metaclass=ABC):
     def images(self) -> List[SlideImageABC]:
         raise NotImplementedError
 
+    def __enter__(self):
+        self.open()
+        return self
 
-class SlideImageABC(metaclass=ABC):
-    @abstractmethod
-    def get_thumbnail(self, level: int) -> np.array:
-        raise NotImplementedError
-
-    @abstractproperty
-    def dimensions(self, level: int) -> Size:
-        raise NotImplementedError
-
-    @abstractmethod
-    def read_region(self, region: Region) -> Image:
-        raise NotImplementedError
-
-    @abstractmethod
-    def read_regions(self, region: List[Region]) -> Image:
-        raise NotImplementedError
-
-
-class PatchExtractorRegular:
-    def __init__(self, image: SlideImageABC, level: int, patch_size: int, stride: int, border: int):
-        pass
-
-    @property
-    def shape_in_patches(self):
-        pass
-
-    def read_patch(self, address: Address) -> np.array:
-        pass
-
-    def read_patches(self, addresses: List[Address]) -> List[np.array]:
-        pass
-
-class PatchExtractorRandom:
-    pass
+    def __exit__(self, *args):
+        self.close()
