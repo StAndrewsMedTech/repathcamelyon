@@ -2,6 +2,7 @@ from typing import List, Dict
 
 import cv2
 import numpy as np
+from typing_extensions import Annotated
 
 from repath.utils.geometry import PointF, Shape
 
@@ -32,16 +33,27 @@ class Annotation:
         cv2.fillPoly(image, [vertices], (fill_colour))
 
 
-def render_annotations(
-    annotations: List[Annotation],
-    factor: float,
-    shape: Shape,
-    labels: Dict[str, int],
-    labels_order: List[str],
-    background_label: str,
-) -> np.array:
-    annotations = sorted(annotations, key=lambda a: labels_order.index(a.label))
-    image = np.full(shape, labels[background_label], dtype=float)
-    for a in annotations:
-        a.draw(image, labels, factor)
-    return image.astype("int")
+class AnnotationSet:
+    """ There is one annotation set per slide image.
+    """
+
+    def __init__(
+        self,
+        annotations: List[Annotation],
+        labels: Dict[str, int],  # TODO: This stuff if dataset dependent!
+        labels_order: List[str],
+        fill_label: str,
+    ) -> None:
+        self.annotations = annotations
+        self.labels = labels
+        self.labels_order = labels_order
+        self.fill_label = fill_label
+
+    def render(self, shape: Shape, factor: float) -> np.array:
+        annotations = sorted(
+            self.annotations, key=lambda a: self.labels_order.index(a.label)
+        )
+        image = np.full(shape, self.labels[self.fill_label], dtype=float)
+        for a in annotations:
+            a.draw(image, self.labels, factor)
+        return image.astype("int")
