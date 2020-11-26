@@ -1,52 +1,32 @@
 from pathlib import Path
 from typing import List
 
-import numpy as np
 from PIL import Image
-from openslide import OpenSlide, open_slide
+from openslide import open_slide
 
-from repath.data.slides.slide_abc import SlideABC, SlideImageABC, Region
-from repath.utils.geometry import Point, Size
+from repath.data.slides.slide import SlideBase, Region
+from repath.utils.geometry import Size
 
 
-class Slide(SlideABC):
+class Slide(SlideBase):
     def __init__(self, path: Path) -> None:
         self._path = path
-        self._slide = None
-        self._images = []
+        self._osr = None
 
     def open(self) -> None:
-        self._slide = open_slide(str(self._path))
-        image = SlideImage(self._slide)
-        self._images.append(image)
+        self._osr = open_slide(str(self._path))
 
     def close(self) -> None:
         self._images.clear()
-        self._slide.close()
+        self._osr.close()
 
     @property
     def path(self) -> Path:
         return self._path
 
     @property
-    def images(self) -> List[SlideImageABC]:
-        return self._images
-
-
-class SlideImage(SlideImageABC):
-    def __init__(self, openslide: OpenSlide) -> None:
-        self._openslide = openslide
-
-    def get_thumbnail(self, level: int) -> np.array:
-        # TODO: check this downscaling is ok
-        width, height = self._openslide.level_dimensions[level]
-        im = self._openslide.get_thumbnail((width, height))
-        im = im.convert("RGB")
-        im = np.asarray(im)
-        return im
-
-    @property
     def dimensions(self) -> List[Size]:
+        # TODO: how should these be clipped? so they are power of 2 scale factor compatable
         return [Size(*dim) for dim in self._openslide.level_dimensions]
 
     def read_region(self, region: Region) -> Image:

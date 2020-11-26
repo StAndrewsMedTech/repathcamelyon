@@ -16,17 +16,7 @@ class Region:
 class SlideImageABC(metaclass=ABCMeta):
     @abstractmethod
     def get_thumbnail(self, level: int) -> np.array:
-        """Create a thumbnail of the image at a specific level.
-
-        Args:
-            level (int): The level that you want all the pixels at.
-
-        Raises:
-            NotImplementedError: This is an abstract base class so there is no implementation.
-
-        Returns:
-            np.array: Returns a numpy array with dimesions rows x columns x 3 channels (0-255)
-        """
+        # TODO: this might be a bit useless - remove?
         raise NotImplementedError
 
     @property

@@ -2,7 +2,6 @@ from typing import List, Dict
 
 import cv2
 import numpy as np
-from typing_extensions import Annotated
 
 from repath.utils.geometry import PointF, Shape
 
@@ -34,13 +33,10 @@ class Annotation:
 
 
 class AnnotationSet:
-    """ There is one annotation set per slide image.
-    """
-
     def __init__(
         self,
         annotations: List[Annotation],
-        labels: Dict[str, int],  # TODO: This stuff if dataset dependent!
+        labels: Dict[str, int],
         labels_order: List[str],
         fill_label: str,
     ) -> None:

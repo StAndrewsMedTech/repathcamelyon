@@ -6,7 +6,6 @@ from repath.data.patching.patch_index import PatchIndex
 from repath.utils.convert import to_frame_with_locations
 from repath.utils.filters import pool2d
 
-import pandas as pd
 import numpy as np
 
 
@@ -62,30 +61,14 @@ class GridPatchFinder:
         Returns:
             PatchIndex: A patch index containing data about how to retieve and label the patches for the slide.
         """
-        # generate the data frame
-        # the data frame has the following columns:
-        # the frame is basically a list of Regions but
-        # they all share the same level, which is patch_level
-        # x: float
-        # y: float
-        # label: str
-
-        # to create this we do the following steps:
-        # 1. work out how many pixels in the label image there are for each patch
-        #   the patch is patch_size at patch_level
-        #   the scale difference between label_level and patch_level is 2 ** (patch_level - labels_level)
-        #   so a patch is patch_size / scale_difference
         scale_factor = 2 ** (self.labels_level - self.patch_level)
-
-        # 2. apply a convolution over the label image so there is one pixel per patch (using maxpooling in order to exclude conficting labels), this enables the stide to work
-        #   The kernal size of the maxpooling operation needs to scale from the size of one patch at label level to one pixel in the new image.
         kernel_size = int(self.patch_size / scale_factor)
+
+        # TODO - Needs to select no the max label but the one with the most area? - needs thinking about this!
+        # The pooling operation might be a parameter for the patch finder.
         patch_labels = pool2d(labels_image, kernel_size, kernel_size, 0)
 
-        # 3. use to_location from utils to change it into a data frame with a row and col
         df = to_frame_with_locations(patch_labels, "label")
-
-        # 4. for each row, use the row and col to compute the x and y at the patch level
         df.row *= self.patch_size
         df.column *= self.patch_size
         df = df.rename(columns={"row": "y", "column": "x"})
@@ -95,13 +78,11 @@ class GridPatchFinder:
         # self.border = border
         # TODO: Add in the boarder transform
 
-        #   subtract the boarder from the top-right point and add it to the patch_size
-        # 6. for each row, add the jitter
         if self.jitter != 0:
 
             def jitter(val: int) -> int:
                 val = val - randint(0, self.jitter)
-                return np.minimum(val, 0)
+                return np.maximum(val, 0)  # TODO: This is broken.
 
             df["x"] = df["x"].apply(jitter)
             df["y"] = df["y"].apply(jitter)
