@@ -7,8 +7,6 @@ from typing import Callable, Dict, Tuple
 import pandas as pd
 from repath.data.annotations.annotation import AnnotationSet
 
-AnnotationSetLoader = Callable[[Path], AnnotationSet]
-
 
 class Dataset(Sequence, metaclass=ABCMeta):
     """ A data set is an object that represents a set of slides and their annotations.

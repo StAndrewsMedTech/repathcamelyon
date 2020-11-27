@@ -1,15 +1,13 @@
+from functools import reduce
 from pathlib import Path
-from repath.data.slides.slide import SlideBase
-from repath.data.annotations.annotation import Annotation, AnnotationSet
 from typing import Dict
 
 import cv2
 import numpy as np
 import pandas as pd
-
 from repath.data.datasets.dataset import Dataset
-from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.preprocess.patching.patch_finder import PatchFinder
+from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.utils.geometry import Shape
 
 
@@ -65,5 +63,9 @@ class PatchIndexSet:
 
         self.indexes = [index_patches(s, a) for s, a in dataset]
 
+    def summary(self) -> pd.DataFrame:
+        summaries = [s for s in self.indexes.summary()]
+        # reduce(, summaries, acc)
+
     def save_patches(self, directory: Path) -> None:
-        
+        pass

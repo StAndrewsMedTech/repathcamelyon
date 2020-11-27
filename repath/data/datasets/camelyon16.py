@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 import pandas as pd
 from repath.data.annotations.annotation import AnnotationSet
 from repath.data.annotations.asapxml import load_annotations
-from repath.data.datasets.dataset import AnnotationSetLoader, Dataset
+from repath.data.datasets.dataset import Dataset
 from repath.data.slides.openslide import Slide
 from repath.data.slides.slide import SlideBase
 from repath.utils.paths import project_root
@@ -50,5 +50,5 @@ def training():
 
 
 def testing():
-    return Camelyon16("test")
-
+    # TODO: Add this
+    pass
