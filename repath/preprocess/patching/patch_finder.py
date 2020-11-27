@@ -1,12 +1,13 @@
 from abc import ABCMeta, abstractmethod
+from repath.preprocess.patching.patch_index import PatchIndex
 from typing import Dict
 from random import randint
 
-from repath.data.patching.patch_index import PatchIndex
+import numpy as np
+import pandas as pd
+
 from repath.utils.convert import to_frame_with_locations
 from repath.utils.filters import pool2d
-
-import numpy as np
 
 
 class PatchFinder(metaclass=ABCMeta):
@@ -14,11 +15,15 @@ class PatchFinder(metaclass=ABCMeta):
     def __call__(self, labels_image: np.array) -> PatchIndex:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def labels_level(self):
+        raise NotImplementedError
 
-class GridPatchFinder:
+
+class GridPatchFinder(PatchFinder):
     def __init__(
         self,
-        labels: Dict[str, int],
         labels_level: int,
         patch_level: int,
         patch_size: int,
@@ -39,7 +44,6 @@ class GridPatchFinder:
         """
 
         # assign values
-        self.labels = labels
         self.labels_level = labels_level
         self.patch_level = patch_level
         self.patch_size = patch_size
@@ -52,7 +56,7 @@ class GridPatchFinder:
         # 2. patch_level is equal to or below labels_level
         # 3. stride is some integer multiple of a pixel at labels_level
 
-    def __call__(self, labels_image: np.array) -> PatchIndex:
+    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
         """Patch finders can be called with an array of rendered annotations and produce a patch index.
 
         Args:
@@ -87,7 +91,11 @@ class GridPatchFinder:
             df["x"] = df["x"].apply(jitter)
             df["y"] = df["y"].apply(jitter)
 
-        return df
+        # return the index and the data required to extract the patches later
+        return df, self.patch_level, self.patch_size
+
+    def labels_level(self):
+        raise self.labels_level
 
 
 class RandomPatchFinder:
