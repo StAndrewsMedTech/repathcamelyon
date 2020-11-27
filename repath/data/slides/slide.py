@@ -13,10 +13,25 @@ class Region:
     size: Size
 
 
-class SlideImageABC(metaclass=ABCMeta):
+class SlideBase(metaclass=ABCMeta):
     @abstractmethod
-    def get_thumbnail(self, level: int) -> np.array:
-        # TODO: this might be a bit useless - remove?
+    def open(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    @property
+    @abstractmethod
+    def path(self) -> Path:
         raise NotImplementedError
 
     @property
@@ -32,37 +47,11 @@ class SlideImageABC(metaclass=ABCMeta):
     def read_regions(self, regions: List[Region]) -> Image:
         raise NotImplementedError
 
-
-class SlideABC(metaclass=ABCMeta):
-    """
-    The Slide abstract base class defines the methodsthat all slide objects
-    should implement in order to be compatable with the rest of the pipeline.
-
-    Attributes:
-        images (List[SlideImage]): List of the subimages on the slide.
-    """
-
-    @abstractmethod
-    def open(self) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def close(self) -> None:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def path(self) -> Path:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def images(self) -> List[SlideImageABC]:
-        raise NotImplementedError
-
-    def __enter__(self):
-        self.open()
-        return self
-
-    def __exit__(self, *args):
-        self.close()
+    def get_thumbnail(self, level: int) -> np.array:
+        # TODO: check this downscaling is ok
+        x, y, w, h = self.dimensions[level]
+        region = Region(level=level, location=(x, y), size=(w, h))
+        im = self.read_region(region)
+        im = im.convert("RGB")
+        im = np.asarray(im)
+        return im
