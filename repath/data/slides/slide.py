@@ -1,13 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, NamedTuple
 
 import numpy as np
 from PIL import Image
 from repath.utils.geometry import Point, Size
 
 
-class Region:
+class Region(NamedTuple):
     level: int
     location: Point
     size: Size
@@ -49,8 +49,8 @@ class SlideBase(metaclass=ABCMeta):
 
     def get_thumbnail(self, level: int) -> np.array:
         # TODO: check this downscaling is ok
-        x, y, w, h = self.dimensions[level]
-        region = Region(level=level, location=(x, y), size=(w, h))
+        size = self.dimensions[level]
+        region = Region(level=level, location=(0, 0), size=size)
         im = self.read_region(region)
         im = im.convert("RGB")
         im = np.asarray(im)
