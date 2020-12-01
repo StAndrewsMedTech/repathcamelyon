@@ -1,6 +1,6 @@
 from functools import reduce
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import cv2
 import numpy as np
@@ -8,6 +8,7 @@ import pandas as pd
 from repath.data.datasets.dataset import Dataset
 from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
+from repath.preprocess.sampling import Sampler
 from repath.utils.geometry import Shape
 
 
@@ -41,12 +42,22 @@ class PatchIndex:
 
 
 class PatchIndexSet:
-    def __init__(
-        self,
-        dataset: Dataset,
-        tissue_detector: TissueDetector,
-        patch_finder: PatchFinder,
-    ) -> None:
+    def __init__(self, dataset: Dataset, indexes: List[PatchIndex]) -> None:
+        self.dataset = dataset
+        self.indexes = indexes
+
+    def summary(self) -> pd.DataFrame:
+        # TODO: stack the dfs vertically and then sum down the columns!
+        summaries = [s for s in self.indexes.summary()]
+        # reduce(, summaries, acc)
+        pass
+
+    def save_patches(self, directory: Path) -> None:
+        pass
+
+    # constructors
+    @classmethod
+    def from_dataset(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> PatchIndexSet:
         def index_patches(slide_path: Path, annotation_path: Path):
             with dataset.slide_cls(slide_path) as slide:
                 annotations = dataset.load_annotations(annotation_path)
@@ -61,11 +72,5 @@ class PatchIndexSet:
                 patch_index = PatchIndex(slide.path, size, level, df, dataset.labels)
                 return patch_index
 
-        self.indexes = [index_patches(s, a) for s, a in dataset]
-
-    def summary(self) -> pd.DataFrame:
-        summaries = [s for s in self.indexes.summary()]
-        # reduce(, summaries, acc)
-
-    def save_patches(self, directory: Path) -> None:
-        pass
+        indexes = [index_patches(s, a) for s, a in dataset]
+        return PatchIndexSet(dataset, indexes)
