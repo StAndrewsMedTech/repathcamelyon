@@ -17,7 +17,6 @@ class Slide(SlideBase):
         self._osr = open_slide(str(self._path))
 
     def close(self) -> None:
-        self._images.clear()
         self._osr.close()
 
     @property
@@ -27,12 +26,13 @@ class Slide(SlideBase):
     @property
     def dimensions(self) -> List[Size]:
         # TODO: how should these be clipped? so they are power of 2 scale factor compatable
-        return [Size(*dim) for dim in self._openslide.level_dimensions]
+        return [Size(*dim) for dim in self._osr.level_dimensions]
 
     def read_region(self, region: Region) -> Image:
-        return self._openslide.read_region(region.location, region.level, region.size)
+        return self._osr.read_region(region.location, region.level, region.size)
 
     def read_regions(self, regions: List[Region]) -> Image:
         # TODO: this call could be parallelised
+        # though pytorch loaders will do this for us
         regions = [self.read_region(region) for region in regions]
         return regions

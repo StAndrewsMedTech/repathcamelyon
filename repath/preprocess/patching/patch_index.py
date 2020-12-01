@@ -1,6 +1,6 @@
 from functools import reduce
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -8,7 +8,6 @@ import pandas as pd
 from repath.data.datasets.dataset import Dataset
 from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
-from repath.preprocess.sampling import Sampler
 from repath.utils.geometry import Shape
 
 
@@ -52,25 +51,31 @@ class PatchIndexSet:
         # reduce(, summaries, acc)
         pass
 
-    def save_patches(self, directory: Path) -> None:
+    def split(self, fraction: float) -> Tuple[PatchIndexSet, PatchIndexSet]:
         pass
 
-    # constructors
-    @classmethod
-    def from_dataset(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> PatchIndexSet:
-        def index_patches(slide_path: Path, annotation_path: Path):
-            with dataset.slide_cls(slide_path) as slide:
-                annotations = dataset.load_annotations(annotation_path)
-                labels_shape = slide.dimensions[patch_finder.labels_level]
-                scale_factor = 2 ** patch_finder.labels_level
-                labels_image = annotations.render(labels_shape, scale_factor)
-                tissue_mask = tissue_detector(
-                    slide.get_thumbnail(patch_finder.labels_level)
-                )
-                labels_image[~tissue_mask] = 0
-                df, level, size = patch_finder(labels_image)
-                patch_index = PatchIndex(slide.path, size, level, df, dataset.labels)
-                return patch_index
+    def save(self, directory: Path) -> None:
+        pass
 
-        indexes = [index_patches(s, a) for s, a in dataset]
-        return PatchIndexSet(dataset, indexes)
+    def export_patches(self, directory: Path) -> None:
+        pass
+
+
+def index_patches(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndexSet':
+    def index_patches(slide_path: Path, annotation_path: Path):
+        with dataset.slide_cls(slide_path) as slide:
+            print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
+            annotations = dataset.load_annotations(annotation_path)
+            labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
+            scale_factor = 2 ** patch_finder.labels_level
+            labels_image = annotations.render(labels_shape, scale_factor)
+            tissue_mask = tissue_detector(
+                slide.get_thumbnail(patch_finder.labels_level)
+            )
+            labels_image[~tissue_mask] = 0
+            df, level, size = patch_finder(labels_image)
+            patch_index = PatchIndex(slide.path, size, level, df, dataset.labels)
+            return patch_index
+
+    indexes = [index_patches(s, a) for s, a in dataset]
+    return PatchIndexSet(dataset, indexes)
