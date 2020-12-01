@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from repath.preprocess.patching.patch_index import PatchIndex
-from typing import Dict
+from typing import Dict, Tuple
 from random import randint
 
 import numpy as np
@@ -12,7 +11,7 @@ from repath.utils.filters import pool2d
 
 class PatchFinder(metaclass=ABCMeta):
     @abstractmethod
-    def __call__(self, labels_image: np.array) -> PatchIndex:
+    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
         raise NotImplementedError
 
     @property
