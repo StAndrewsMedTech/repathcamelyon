@@ -47,4 +47,6 @@ class Dataset(Sequence, metaclass=ABCMeta):
     def __getitem__(self, idx):
         row = self.paths.iloc[idx]
         project_dir = project_root()
-        return project_dir / self.root/ row["slide"], project_dir / self.root /row["annotation"]
+        slide_path = project_dir / self.root / row["slide"]
+        annot_path = project_dir / self.root / row["annotation"] if row['annotation'] != "" else ""
+        return slide_path, annot_path

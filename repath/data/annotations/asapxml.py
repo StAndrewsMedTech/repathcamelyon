@@ -24,6 +24,12 @@ def annotation_from_tag(tag: ET.Element) -> Annotation:
 
 
 def load_annotations(xml_file_path: Path) -> List[Annotation]:
+    # if the path is empty or a dir then return an empty annotations list
+    # TODO: Make sure this requirement is stated in the requirements for
+    # load_annotations functions
+    if not xml_file_path.is_file():
+        return []
+
     # find all the annotation tags in the xml document
     tree = ET.parse(xml_file_path)
     root = tree.getroot()

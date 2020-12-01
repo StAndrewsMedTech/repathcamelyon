@@ -2,11 +2,12 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 import pandas as pd
-from repath.data.annotations.annotation import AnnotationSet
+from repath.data.annotations import AnnotationSet
 from repath.data.annotations.asapxml import load_annotations
-from repath.data.datasets.dataset import Dataset
+from repath.data.datasets import Dataset
 from repath.data.slides.openslide import Slide
-from repath.data.slides.slide import SlideBase
+from repath.data.slides import SlideBase
+from repath.utils.paths import project_root
 
 
 class Camelyon16(Dataset):
@@ -30,7 +31,7 @@ class Camelyon16(Dataset):
 
 def training():
     # set up the paths to the slides and annotations
-    root = "data" / "camelyon16" / "raw" / "training"
+    root = project_root() / "data" / "camelyon16" / "raw" / "training"
     annotations_dir = root / "lesion_annotations"
     tumor_slide_dir = root / "tumor"
     normal_slide_dir = root / "normal"
