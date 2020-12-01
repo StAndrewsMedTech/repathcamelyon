@@ -17,7 +17,7 @@ HAS_CONDA=True
 endif
 
 # network
-JUPYTER_PORT := 8270
+JUPYTER_PORT := 8800
 
 #################################################################################
 # PYTHON ENVIRONMENT COMMANDS                                                   #
@@ -92,7 +92,7 @@ docker_run:
 				--gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) \
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
 				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
-				-v /raid/models:/home/ubuntu/$(PROJECT_NAME)/models \
+				-v /raid/experiments:/home/ubuntu/$(PROJECT_NAME)/experiments \
 				-it $(PROJECT_NAME):latest
 
 docker_run_local:
@@ -105,7 +105,7 @@ docker_run_local:
 #################################################################################
 setup_jupyter:
 	pip install --user ipykernel
-	python -m ipykernel install --user --name=pagan
+	python -m ipykernel install --user --name=repath
 
 run_notebook:
 	jupyter lab --ip=* --port $(JUPYTER_PORT) --allow-root
