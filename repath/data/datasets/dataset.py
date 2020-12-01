@@ -3,6 +3,7 @@ from collections import Sequence
 from pathlib import Path
 from repath.data.slides.slide import SlideBase
 from typing import Callable, Dict, Tuple
+from repath.utils.paths import project_root
 
 import pandas as pd
 from repath.data.annotations.annotation import AnnotationSet
@@ -45,4 +46,5 @@ class Dataset(Sequence, metaclass=ABCMeta):
 
     def __getitem__(self, idx):
         row = self.paths.iloc[idx]
-        return row["slide"], row["annotation"]
+        project_dir = project_root()
+        return project_dir / self.root/ row["slide"], project_dir / self.root /row["annotation"]

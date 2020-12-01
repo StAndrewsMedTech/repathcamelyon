@@ -7,7 +7,6 @@ from repath.data.annotations.asapxml import load_annotations
 from repath.data.datasets.dataset import Dataset
 from repath.data.slides.openslide import Slide
 from repath.data.slides.slide import SlideBase
-from repath.utils.paths import project_root
 
 
 class Camelyon16(Dataset):
@@ -30,21 +29,21 @@ class Camelyon16(Dataset):
 
 
 def training():
-    root = project_root() / "data" / "camelyon16" / "training"
-
+    # set up the paths to the slides and annotations
+    root = "data" / "camelyon16" / "raw" / "training"
     annotations_dir = root / "lesion_annotations"
     tumor_slide_dir = root / "tumor"
     normal_slide_dir = root / "normal"
 
-    # path in the paths data frame are relative to the dataset 'root'
-    annotation_paths = [p.relative_to(root) for p in annotations_dir.glob("*.xml")]
-    tumor_slide_paths = [p.relative_to(root) for p in tumor_slide_dir.glob("*.tif")]
-    normal_slide_paths = [p.relative_to(root) for p in normal_slide_dir.glob("*.tif")]
+    # all paths are relative to the dataset 'root'
+    annotation_paths = sorted([p.relative_to(root) for p in annotations_dir.glob("*.xml")])
+    tumor_slide_paths = sorted([p.relative_to(root) for p in tumor_slide_dir.glob("*.tif")])
+    normal_slide_paths = sorted([p.relative_to(root) for p in normal_slide_dir.glob("*.tif")])
 
-    # turn them into a data frame
+    # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
     df["slide"] = tumor_slide_paths + normal_slide_paths
-    df["annotation"] = annotation_paths  # TODO: check this works - on the DGX!
+    df["annotation"] = annotation_paths + ["" for _ in range(len(normal_slide_paths))]
 
     return Camelyon16(root, df)
 
