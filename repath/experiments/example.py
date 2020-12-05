@@ -1,3 +1,4 @@
+from os import POSIX_FADV_WILLNEED
 from repath.preprocess.patching import PatchIndexSet
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetectorOTSU
@@ -19,6 +20,7 @@ def preprocessing() -> None:
 
     # create a recipe that balances the number of patches each label in each patch set
 
+
     # save the patches to the cache directory
 
 
@@ -28,4 +30,24 @@ def patch_training() -> None:
 
 def postprocessing() -> None:
     pass
+
+
+def slide_training() -> None:
+    pass
+
+
+# slides sampling - train and validation
+
+# patch sampling - within train or validation, balance the classes over the slides - this is the same as preprocessing
+
+# train patch classifier
+
+# hard negative mining
+#   perdict for every patch in slide sampling - train
+#   take the false positive and add them back into the patch sampling
+#   retain the patch classifier
+
+# using the slide sampling validation set, predict a probability for every patch to create a heat map
+
+# there are patch results (can use slides and patches sets), slide results, lesion level results, patient level results
 

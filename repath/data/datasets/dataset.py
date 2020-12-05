@@ -22,9 +22,8 @@ class Dataset(Sequence, metaclass=ABCMeta):
         Sequence ([type]): [description]
         metaclass ([type], optional): [description]. Defaults to ABCMeta.
     """
-
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
-        # process the paths_df (has two columns 'slide', 'annotation')
+        # process the paths_df (has two columns 'slide', 'annotation', 'label', 'tags')
         self.root = root
         self.paths = paths
 
@@ -49,4 +48,4 @@ class Dataset(Sequence, metaclass=ABCMeta):
         project_dir = project_root()
         slide_path = project_dir / self.root / row["slide"]
         annot_path = project_dir / self.root / row["annotation"] if row['annotation'] != "" else ""
-        return slide_path, annot_path
+        return slide_path, annot_path, row['label'], row['tags']

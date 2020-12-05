@@ -1,6 +1,6 @@
 from functools import reduce
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -14,23 +14,42 @@ from repath.utils.geometry import Shape
 class PatchIndex:
     def __init__(
         self,
+        dataset_root: Path,
         slide_path: Path,
         patch_size: int,
         level: int,
         df: pd.DataFrame,
         labels: Dict[str, int],
+        slide_label: str,
+        tags: str
     ) -> None:
-        self.slide_path = slide_path
+        self.dataset_root = dataset_root
+        self.slide_path = slide_path.relative_to(dataset_root)
         self.patch_size = patch_size
         self.level = level
         self.df = df
         self.labels = labels
+        self.slide_label = slide_label
+        self.tags = tags
 
     def summary(self) -> pd.DataFrame:
-        by_label = self.df.groupby("label").count()
-        return by_label
+        by_label = self.df.groupby("label").size()
+        labels = {v: k for k, v in self.labels.items()}
+        count_df = by_label.to_frame().T.rename(columns = labels)
+        columns = ['slide'] + list(labels.values())
+        summary = pd.DataFrame(columns=columns)
+        for l in labels.values():
+            if l in count_df:
+                summary[l] = count_df[l]
+            else:
+                summary[l] = 0
+        summary['slide'] = self.slide_path
+        summary = summary.replace(np.nan, 0)  # if there are no patches for some classes
+        return summary
 
     def labels_map(self, shape: Shape, factor: int, bg: int) -> np.array:
+        # TODO: This is hard to use because you need to know the shape and scale
+        # perhaps it should just ask for a level?
         img = np.full(shape, bg, dtype="float")
         size = self.patch_size / factor
         for p in self.df.itertuples(index=False):
@@ -40,19 +59,23 @@ class PatchIndex:
         return img.astype("int")
 
 
-class PatchIndexSet:
+class PatchIndexSet(Sequence):
     def __init__(self, dataset: Dataset, indexes: List[PatchIndex]) -> None:
         self.dataset = dataset
         self.indexes = indexes
 
-    def summary(self) -> pd.DataFrame:
-        # TODO: stack the dfs vertically and then sum down the columns!
-        summaries = [s for s in self.indexes.summary()]
-        # reduce(, summaries, acc)
-        pass
+    def __len__(self):
+        return len(self.indexes)
 
-    def split(self, fraction: float) -> Tuple[PatchIndexSet, PatchIndexSet]:
-        pass
+    def __getitem__(self, idx):
+        return self.indexes[idx]
+
+    def summary(self) -> pd.DataFrame:
+        summaries = [s.summary() for s in self.indexes]
+        rtn = pd.concat(summaries)
+        rtn = rtn.reset_index()
+        rtn = rtn.drop('index', axis=1)
+        return rtn
 
     def save(self, directory: Path) -> None:
         pass
@@ -62,20 +85,18 @@ class PatchIndexSet:
 
 
 def index_patches(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndexSet':
-    def index_patches(slide_path: Path, annotation_path: Path):
+    def index_patches(slide_path: Path, annotation_path: Path, slide_label: str, tags: str):
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             annotations = dataset.load_annotations(annotation_path)
             labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             scale_factor = 2 ** patch_finder.labels_level
             labels_image = annotations.render(labels_shape, scale_factor)
-            tissue_mask = tissue_detector(
-                slide.get_thumbnail(patch_finder.labels_level)
-            )
+            tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
             df, level, size = patch_finder(labels_image)
-            patch_index = PatchIndex(slide.path, size, level, df, dataset.labels)
+            patch_index = PatchIndex(dataset.root, slide_path, size, level, df, dataset.labels, slide_label, tags)
             return patch_index
 
-    indexes = [index_patches(s, a) for s, a in dataset]
+    indexes = [index_patches(s, a, label, tags) for s, a, label, tags in dataset]
     return PatchIndexSet(dataset, indexes)

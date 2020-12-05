@@ -45,8 +45,35 @@ def training():
     df = pd.DataFrame()
     df["slide"] = tumor_slide_paths + normal_slide_paths
     df["annotation"] = annotation_paths + ["" for _ in range(len(normal_slide_paths))]
+    df["label"] = ['tumor'] * len(tumor_slide_paths) + ['normal'] * len(normal_slide_paths)
+    df["tags"] = ""
 
     return Camelyon16(root, df)
+
+
+def training_small():
+    # set up the paths to the slides and annotations
+    root = project_root() / "data" / "camelyon16" / "raw" / "training"
+    annotations_dir = root / "lesion_annotations"
+    tumor_slide_dir = root / "tumor"
+    normal_slide_dir = root / "normal"
+
+    # all paths are relative to the dataset 'root'
+    annotation_paths = sorted([p.relative_to(root) for p in annotations_dir.glob("*.xml")])
+    tumor_slide_paths = sorted([p.relative_to(root) for p in tumor_slide_dir.glob("*.tif")])
+    normal_slide_paths = sorted([p.relative_to(root) for p in normal_slide_dir.glob("*.tif")])
+
+    # turn them into a data frame and pad with empty annotation paths
+    df = pd.DataFrame()
+    df["slide"] = tumor_slide_paths + normal_slide_paths
+    df["annotation"] = annotation_paths + ["" for _ in range(len(normal_slide_paths))]
+    df["label"] = ['tumor'] * len(tumor_slide_paths) + ['normal'] * len(normal_slide_paths)
+    df["tags"] = ""
+
+    df = df.sample(3)
+
+    return Camelyon16(root, df)
+
 
 
 def testing():
