@@ -1,5 +1,5 @@
 from os import POSIX_FADV_WILLNEED
-from repath.preprocess.patching import PatchIndexSet
+from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetectorOTSU
 from repath.preprocess.patching.patch_finder import GridPatchFinder
@@ -15,8 +15,8 @@ def preprocessing() -> None:
     patch_finder = GridPatchFinder(6, 0, 256, 256)
 
     # use the dataset to generate a patch index set for the training data
-    training_patches = PatchIndexSet(training_data, tissue_detector, patch_finder)
-    testing_patches = PatchIndexSet(testing_data, tissue_detector, patch_finder)
+    training_patches = PatchIndex(training_data, tissue_detector, patch_finder)
+    testing_patches = PatchIndex(testing_data, tissue_detector, patch_finder)
 
     # create a recipe that balances the number of patches each label in each patch set
 

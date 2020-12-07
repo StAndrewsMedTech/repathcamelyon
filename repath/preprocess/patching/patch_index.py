@@ -11,7 +11,7 @@ from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.utils.geometry import Shape
 
 
-class PatchIndex:
+class PatchSet:
     def __init__(
         self,
         dataset_root: Path,
@@ -59,32 +59,40 @@ class PatchIndex:
         return img.astype("int")
 
 
-class PatchIndexSet(Sequence):
-    def __init__(self, dataset: Dataset, indexes: List[PatchIndex]) -> None:
+class PatchIndex(Sequence):
+    def __init__(self, dataset: Dataset, patches: List[PatchSet]) -> None:
         self.dataset = dataset
-        self.indexes = indexes
+        self.patches = patches
 
     def __len__(self):
-        return len(self.indexes)
+        return len(self.patches)
 
     def __getitem__(self, idx):
-        return self.indexes[idx]
+        return self.patches[idx]
 
     def summary(self) -> pd.DataFrame:
-        summaries = [s.summary() for s in self.indexes]
+        summaries = [s.summary() for s in self.patches]
         rtn = pd.concat(summaries)
         rtn = rtn.reset_index()
         rtn = rtn.drop('index', axis=1)
         return rtn
 
     def save(self, directory: Path) -> None:
-        pass
+        """Serialise the PatchSet to a set of csv files.
+
+        There is one csv file for each patch set in the index.
+        There is a csv with the details of each set in a row.
+
+        Args:
+            directory (Path): The directory to output the files to.
+        """
+        
 
     def export_patches(self, directory: Path) -> None:
         pass
 
 
-def index_patches(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndexSet':
+def index_patches(dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndex':
     def index_patches(slide_path: Path, annotation_path: Path, slide_label: str, tags: str):
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
@@ -95,8 +103,8 @@ def index_patches(dataset: Dataset, tissue_detector: TissueDetector, patch_finde
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
             df, level, size = patch_finder(labels_image)
-            patch_index = PatchIndex(dataset.root, slide_path, size, level, df, dataset.labels, slide_label, tags)
+            patch_index = PatchSet(dataset.root, slide_path, size, level, df, dataset.labels, slide_label, tags)
             return patch_index
 
     indexes = [index_patches(s, a, label, tags) for s, a, label, tags in dataset]
-    return PatchIndexSet(dataset, indexes)
+    return PatchIndex(dataset, indexes)
