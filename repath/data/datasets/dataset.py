@@ -24,7 +24,8 @@ class Dataset(Sequence, metaclass=ABCMeta):
     """
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         # process the paths_df (has two columns 'slide', 'annotation', 'label', 'tags')
-        self.root = root
+        # root is stored relative to project_root
+        self.root = root.relative_to(project_root())
         self.paths = paths
 
     @abstractmethod
@@ -45,7 +46,12 @@ class Dataset(Sequence, metaclass=ABCMeta):
 
     def __getitem__(self, idx):
         row = self.paths.iloc[idx]
-        project_dir = project_root()
-        slide_path = project_dir / self.root / row["slide"]
-        annot_path = project_dir / self.root / row["annotation"] if row['annotation'] != "" else ""
+        slide_path = self.to_abs_path(row["slide"])
+        annot_path = self.to_abs_path(row["annotation"]) if row['annotation'] != "" else ""
         return slide_path, annot_path, row['label'], row['tags']
+
+    def to_abs_path(self, path: Path) -> Path:
+        return project_root() / self.root / path
+
+    def to_rel_path(self, path: Path) -> Path:
+        return path.relative_to(project_root() / self.root)
