@@ -1,8 +1,7 @@
-from os import POSIX_FADV_WILLNEED
 from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
-from repath.preprocess.tissue_detection.tissue_detector import TissueDetectorOTSU
-from repath.preprocess.patching.patch_finder import GridPatchFinder
+from repath.preprocess.tissue_detection import TissueDetectorOTSU
+from repath.preprocess.patching import GridPatchFinder
 
 
 def preprocessing() -> None:
