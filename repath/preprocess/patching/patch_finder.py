@@ -79,7 +79,7 @@ class GridPatchFinder(PatchFinder):
 
         # 5. for each row, add the border
         # self.border = border
-        # TODO: Add in the boarder transform
+        # TODO: Add in the border transform
 
         if self.jitter != 0:
 

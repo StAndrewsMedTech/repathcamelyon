@@ -12,6 +12,12 @@ class Region(NamedTuple):
     location: Point
     size: Size
 
+    @classmethod
+    def patch(cls, x, y, size, level):
+        location = Point(x, y)
+        size = Size(size, size)
+        return Region(level, location, size)
+
 
 class SlideBase(metaclass=ABCMeta):
     @abstractmethod
