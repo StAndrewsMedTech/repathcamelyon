@@ -1,2 +1,2 @@
 from .sampler import *
-from .stratified import *
+from .splitter import *
