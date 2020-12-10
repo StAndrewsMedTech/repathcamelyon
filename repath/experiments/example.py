@@ -1,30 +1,78 @@
+from repath.utils.paths import project_root
 from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder
 
 
-def preprocessing() -> None:
-    # import and load the Camelyon16 training set
-    training_data = camelyon16.training()
-    testing_data = camelyon16.testing()
+"""
+Global stuff
+"""
 
-    # define a tissue detector and the patch finder for creating the patch index
-    tissue_detector = TissueDetectorOTSU()
+experiment_root = project_root() / 'experiments' / 'wang'
+tissue_detector = TissueDetectorOTSU()
+
+class PatchClassifier(pl.LightningModule):
+    def __init__(self, model) -> None:
+        super().__init__()
+        self.model = model
+
+    def cross_entropy_loss(self, logits, labels):
+        return F.nll_loss(logits, labels)
+
+    def training_step(self, batch, batch_idx):
+        x, y = train_batch
+        logits = self.model(x)
+        x = torch.log_softmax(x, dim=1)
+        loss = self.cross_entropy_loss(logits, y)
+        self.log('train_loss', loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = train_batch
+        logits = self.model(x)
+        x = torch.log_softmax(x, dim=1)
+        loss = self.cross_entropy_loss(logits, y)
+        self.log('val_loss', loss)
+
+    def configure_optimizers(self):
+        optimizer = torch.opt
+        return optimizer
+
+
+"""
+Sections of the experiment
+"""
+
+def preprocesses() -> None:
+    # index all the patches for the camelyon16 dataset
+    train_data = camelyon16.training()
     patch_finder = GridPatchFinder(6, 0, 256, 256)
+    train_patches = PatchIndex.for_dataset(train_data, tissue_detector, patch_finder)
+    
+    # do the train validate split
+    train, valid = split(train_patches, 0.7)
+    train_samples = sample(train)
+    valid_samples = sample(valid)
 
-    # use the dataset to generate a patch index set for the training data
-    training_patches = PatchIndex(training_data, tissue_detector, patch_finder)
-    testing_patches = PatchIndex(testing_data, tissue_detector, patch_finder)
-
-    # create a recipe that balances the number of patches each label in each patch set
+    # save out all the patches
+    train_samples.save_patches(experiment_root / "training_patches")
+    valid_samples.save_patches(experiment_root / "training_patches")
 
 
-    # save the patches to the cache directory
+def train_patch_classifier() -> None:
+    # prepare our data 
+    batch_size = 128
+    train_set = ImageFolder(experiment_root / "training_patches")
+    valid_set = ImageFolder(experiment_root / "validation_patches")
+    train_loader = DataLoader(train_data, batch_size=batch_size)
+    valid_loader = DataLoader(valid_data, batch_size=batch_size)
 
-
-def patch_training() -> None:
-    pass
+    
+    model = Backbone()
+    classifier = PatchClassifier(model)
+    trainer = pl.Trainer()
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
 def postprocessing() -> None:
@@ -50,3 +98,4 @@ def slide_training() -> None:
 
 # there are patch results (can use slides and patches sets), slide results, lesion level results, patient level results
 
+steps = [preprocessing, patch_training]
