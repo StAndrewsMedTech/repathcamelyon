@@ -1,4 +1,6 @@
+from collections import namedtuple
 from functools import reduce
+import json
 from pathlib import Path
 from repath.utils.paths import project_root
 from typing import Any, Dict, List, Sequence, Tuple
@@ -38,7 +40,14 @@ class PatchSet(Sequence):
         return len(self.patches_df)
 
     def __getitem__(self, idx):
-        return self.patches_df.items()[idx]
+        return self.patches_df.iterrows()[idx]
+
+    @property
+    def abs_slide_path(self):
+        return self.dataset.to_abs_path(self.slide_path)
+
+    def open_slide(self):
+        return self.dataset.slide_cls(self.abs_slide_path)
 
     def summary(self) -> pd.DataFrame:
         by_label = self.patches_df.groupby("label").size()
@@ -122,6 +131,7 @@ class PatchIndex(Sequence):
 
             # save out the patches csv file for this slide
             csv_path = output_dir / info['csv_path']
+            print(csv_path)
             csv_path.parents[0].mkdir(parents=True, exist_ok=True)
             patches.to_csv(csv_path, index=False)
 
@@ -130,20 +140,28 @@ class PatchIndex(Sequence):
 
         # tidy up a bit and save the csv
         index_df = index_df.astype({"level": int, "patch_size": int})
-        output_dir.mkdir(parents=True, exist_ok=False)
+        output_dir.mkdir(parents=True, exist_ok=True)  # TODO: What happends if it exists already?
         index_df.to_csv(output_dir / 'index.csv', index=False)
 
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'PatchIndex':
-        def patchset_from_dict(info: Dict[str, Any]) -> PatchSet:
-            csv_path = input_dir / info.pop('csv_path')
-            patches_df = pd.read_csv(csv_path)
-            info['patches_df'] = patches_df
-            patchset = PatchSet(**info)
+        def patchset_from_row(r: namedtuple) -> PatchSet:
+            # parse all the fields
+            slide_path = Path(r.slide_path)
+            patch_size = int(r.patch_size)
+            level = int(r.level)
+            patches_df = pd.read_csv(input_dir / r.csv_path)
+            print(r.tags)
+            tags = str(r.tags).split(',')
+            labels = json.loads(r.labels)
+
+            # call the constructor
+            patchset = PatchSet(dataset, slide_path, patch_size, level, 
+                                patches_df, labels, r.slide_label, tags)
             return patchset
 
         index = pd.read_csv(input_dir / 'index.csv')
-        patches = [patchset_from_dict(r.to_dict()) for r in index.iterrows()]
+        patches = [patchset_from_row(r) for r in index.itertuples()]
         rtn = cls(dataset, patches)
         return rtn
 

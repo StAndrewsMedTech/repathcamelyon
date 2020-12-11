@@ -1,39 +1,57 @@
+
+from pytorch_lightning.metrics import Accuracy
+
 from repath.utils.paths import project_root
 from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder
+from repath.patch_classification.models.simple import Backbone
 
 
 """
 Global stuff
 """
-
-experiment_root = project_root() / 'experiments' / 'wang'
+experiment_name = 'example'
+experiment_root = project_root() / 'experiments' / experiment_name
 tissue_detector = TissueDetectorOTSU()
 
 class PatchClassifier(pl.LightningModule):
     def __init__(self, model) -> None:
         super().__init__()
         self.model = model
+        self.probs = [] # used for testing
 
     def cross_entropy_loss(self, logits, labels):
         return F.nll_loss(logits, labels)
 
-    def training_step(self, batch, batch_idx):
-        x, y = train_batch
+    def accuracy(self, logits, labels):
+        _, pred = torch.max(logits, 1)
+        accuracy = Accuracy()
+        accu = accuracy(pred, labels)
+        return accu
+
+    def step(self, batch, batch_idx, label):
+        x, y = batch
         logits = self.model(x)
         x = torch.log_softmax(x, dim=1)
         loss = self.cross_entropy_loss(logits, y)
-        self.log('train_loss', loss)
+        accu = self.accuracy(logits, y)
+        self.log(f'{label}_loss', loss)
+        self.log(f'{label}_accuracy', accu)
         return loss
 
+    def training_step(self, batch, batch_idx):
+        return self.step(batch, batch_idx, "train")
+
     def validation_step(self, batch, batch_idx):
-        x, y = train_batch
+        return self.step(batch, batch_idx, "val")
+
+    def test_step(self, batch, batch_index):
+        x, _ = batch
         logits = self.model(x)
-        x = torch.log_softmax(x, dim=1)
-        loss = self.cross_entropy_loss(logits, y)
-        self.log('val_loss', loss)
+        x = torch.log_softmax(logits, dim=1)
+        self.probs.append(x)
 
     def configure_optimizers(self):
         optimizer = torch.opt
@@ -51,13 +69,13 @@ def preprocesses() -> None:
     train_patches = PatchIndex.for_dataset(train_data, tissue_detector, patch_finder)
     
     # do the train validate split
-    train, valid = split(train_patches, 0.7)
-    train_samples = sample(train)
-    valid_samples = sample(valid)
+    train, valid = split(train_patches, 0.7, seperate_slides=True)
+    train_samples = sample(train, 700000)
+    valid_samples = sample(valid, 300000)
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
-    valid_samples.save_patches(experiment_root / "training_patches")
+    valid_samples.save_patches(experiment_root / "validation_patches")
 
 
 def train_patch_classifier() -> None:
@@ -65,15 +83,39 @@ def train_patch_classifier() -> None:
     batch_size = 128
     train_set = ImageFolder(experiment_root / "training_patches")
     valid_set = ImageFolder(experiment_root / "validation_patches")
-    train_loader = DataLoader(train_data, batch_size=batch_size)
-    valid_loader = DataLoader(valid_data, batch_size=batch_size)
+    train_loader = DataLoader(train_set, batch_size=batch_size)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size)
 
-    
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath=experiment_root / 'patch_model',
+        filename=f'checkpoint-{epoch:02d}-{val_loss:.2f}.ckpt',
+        save_top_k=1,
+        mode='min',
+    )
+
+    # train our model
     model = Backbone()
     classifier = PatchClassifier(model)
-    trainer = pl.Trainer()
+    trainer = pl.Trainer(callbacks=[checkpoint_callback])
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
+
+def patch_classification_metrics() -> None:
+    patchset
+
+    # predict for every patch in the patch index
+    batch_size = 128
+    test_set = SlideDataset(patchset)
+    test_loader = DataLoader(test_set, batch_size=batch_size)
+    
+    # load the model
+    cp_path = (experiment_root / 'patch_model').glob('*.ckpt')[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+    trainer = pl.Trainer(classifier)
+    trainer.test(classifier, test_loader=test_loader)
+    predictions = classifier.predictions
 
 def postprocessing() -> None:
     pass
