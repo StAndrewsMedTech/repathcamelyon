@@ -28,7 +28,7 @@ class PatchSet(Sequence):
         tags: List[str]
     ) -> None:
         self.dataset = dataset
-        self.slide_path = slide_path
+        self.slide_path = dataset.to_rel_path(slide_path)
         self.level = level
         self.patch_size = patch_size
         self.patches_df = patches_df
@@ -123,9 +123,10 @@ class PatchIndex(Sequence):
             info = patchset.__dict__.copy()
             info.pop('patches_df')
             info['csv_path'] = patchset.slide_path.with_suffix('.csv')
+            info.pop('dataset')
             return info, patchset.patches_df
 
-        index_df = pd.DataFrame(columns=['slide_path', 'csv_path', 'slide_label', 'tags', 'level', 'patch_size', 'dataset_root', 'labels'])
+        index_df = pd.DataFrame(columns=['slide_path', 'csv_path', 'slide_label', 'tags', 'level', 'patch_size', 'labels'])
         for patchset in self.patches:
             info, patches = to_dict_and_frame(patchset)
 
@@ -146,6 +147,8 @@ class PatchIndex(Sequence):
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'PatchIndex':
         def patchset_from_row(r: namedtuple) -> PatchSet:
+            print(r)
+
             # parse all the fields
             slide_path = Path(r.slide_path)
             patch_size = int(r.patch_size)
@@ -153,7 +156,7 @@ class PatchIndex(Sequence):
             patches_df = pd.read_csv(input_dir / r.csv_path)
             print(r.tags)
             tags = str(r.tags).split(',')
-            labels = json.loads(r.labels)
+            labels = json.loads(r.labels.replace('\', '\"'))
 
             # call the constructor
             patchset = PatchSet(dataset, slide_path, patch_size, level, 
