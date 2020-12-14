@@ -147,8 +147,6 @@ class PatchIndex(Sequence):
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'PatchIndex':
         def patchset_from_row(r: namedtuple) -> PatchSet:
-            print(r)
-
             # parse all the fields
             slide_path = Path(r.slide_path)
             patch_size = int(r.patch_size)
