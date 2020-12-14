@@ -10,7 +10,7 @@ from repath.preprocess.patching import GridPatchFinder
 from repath.patch_classification.models.simple import Backbone
 from repath.postprocess.slide_dataset import SlideDataset
 from repath.postprocess.prediction import inference_on_slide
-from repath.postprocess.on_single_slide_patchset import to_heatmap
+from repath.postprocess.patch_index_results import PatchSetResults, PatchIndexResults
 
 
 """
@@ -118,17 +118,20 @@ def inference_on_valid_slides() -> None:
     just_patch_classes = remove_item_from_dict(valid.labels, "background")
     num_classes = len(just_patch_classes)
 
+    output_dir = experiment_root / "valid_index"
+    results_dir_name = "pre_hnm_results"
+    heatmap_dir_name = "pre_hnm_heatmaps"
+    valid_results = PatchIndexResults(valid)
+
     for patchset in valid:
         valid_set = SlideDataset(patchset)
         probs_out = inference_on_slide(valid_set, classifier, num_classes, 128, 80, 1)
         probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
-        probs_df = pd.concat((patchset.df, probs_df), axis=1)
-        heatmap = to_heatmap(probs_df, 'tumor')
-        patchset.results(name='pre_hnm') = probs_df
-        patchset.results.save(experiment_root / "valid_index")
-        patchset.heatmap(name='pre_hnm') = heatmap
-        patchset.heatmap.save(experiment_root / "valid_index")
+        patchset_results = PatchSetResults(patchset, probs_df)
+        patchset_results.save_csv(output_dir / results_dir_name)
+        patchset.heatmap.save_heatmap(output_dir / heatmap_dir_name)
 
+    valid_results.save(output_dir, results_dir_name, heatmap_dir_name)
 
 
 def slide_training() -> None:
