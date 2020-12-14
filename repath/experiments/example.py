@@ -1,11 +1,16 @@
+import pandas as pd
 from pytorch_lightning.metrics import Accuracy
 
 from repath.utils.paths import project_root
+from repath.utils.convert import remove_item_from_dict
 from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder
 from repath.patch_classification.models.simple import Backbone
+from repath.postprocess.slide_dataset import SlideDataset
+from repath.postprocess.prediction import inference_on_slide
+from repath.postprocess.on_single_slide_patchset import to_heatmap
 
 
 """
@@ -100,34 +105,30 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
-def patch_classification_metrics() -> None:
-    # save the train and valid patch indexes
-    valid = PatchIndex.load(experiment_root / "valid_index")
+def inference_on_valid_slides() -> None:
 
-    # predict for every patch in the patch index
-    batch_size = 128
-
-    num_devices = torch.cuda.device_count()
-
-    # load the model
     cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
     classifier = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path, model=Backbone()
     )
 
-    # put the classifier on all the devices
-    classifier.to_device(["""add here"""])
+    valid = PatchIndex.load(experiment_root / "valid_index")
+
+    # get number of classes
+    just_patch_classes = remove_item_from_dict(valid.labels, "background")
+    num_classes = len(just_patch_classes)
 
     for patchset in valid:
         valid_set = SlideDataset(patchset)
-        # split the valid set into 8 parts
-        # create 8 data loaders (on for each GPU)
-        # for each each classifier infer on it's dataloader
-        # reassemble the predictions into one tensor, reassember into a prediction for each patch in patch set
+        probs_out = inference_on_slide(valid_set, classifier, num_classes, 128, 80, 1)
+        probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
+        probs_df = pd.concat((patchset.df, probs_df), axis=1)
+        heatmap = to_heatmap(probs_df, 'tumor')
+        patchset.results(name='pre_hnm') = probs_df
+        patchset.results.save(experiment_root / "valid_index")
+        patchset.heatmap(name='pre_hnm') = heatmap
+        patchset.heatmap.save(experiment_root / "valid_index")
 
-
-def postprocessing() -> None:
-    pass
 
 
 def slide_training() -> None:

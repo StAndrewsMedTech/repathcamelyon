@@ -31,6 +31,10 @@ class Camelyon16(Dataset):
     def labels(self) -> Dict[str, int]:
         return {"background": 0, "normal": 1, "tumor": 2}
 
+    @property
+    def slide_labels(self) -> Dict[str, int]:
+        return {"normal": 0, "tumor": 1}
+
 
 def training():
     # set up the paths to the slides and annotations

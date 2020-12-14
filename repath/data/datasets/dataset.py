@@ -41,6 +41,10 @@ class Dataset(Sequence, metaclass=ABCMeta):
     def labels(self) -> Dict[str, int]:
         raise NotImplementedError
 
+    @property
+    def slide_labels(self) -> Dict[str, int]:
+        raise NotImplementedError
+
     def __len__(self):
         return len(self.paths)
 
