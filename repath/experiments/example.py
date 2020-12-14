@@ -105,31 +105,62 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
-def inference_on_valid_slides() -> None:
+def inference_on_train_slides_pre_hnm() -> None:
 
     cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
     classifier = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path, model=Backbone()
     )
 
-    valid = PatchIndex.load(experiment_root / "valid_index")
+    output_dir = experiment_root / "train_index"
+    results_dir_name = "pre_hnm_results"
+    heatmap_dir_name = "pre_hnm_heatmaps"
+
+    train = PatchIndex.load(output_dir)
+
+    # get number of classes
+    just_patch_classes = remove_item_from_dict(train.labels, "background")
+    num_classes = len(just_patch_classes)
+
+    train_results = PatchIndexResults(train)
+
+    for patchset in train_results:
+        train_set = SlideDataset(patchset)
+        probs_out = inference_on_slide(train_set, classifier, num_classes, 128, 80, 1)
+        probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
+        patchset = PatchSetResults(patchset, probs_df)
+        patchset.save_csv(output_dir / results_dir_name)
+        patchset.save_heatmap(output_dir / heatmap_dir_name)
+
+    train_results.save(output_dir, results_dir_name, heatmap_dir_name)
+
+
+def inference_on_valid_slides_pre_hnm() -> None:
+
+    cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
+    classifier = PatchClassifier.load_from_checkpoint(
+        checkpoint_path=cp_path, model=Backbone()
+    )
+
+    output_dir = experiment_root / "valid_index"
+    results_dir_name = "pre_hnm_results"
+    heatmap_dir_name = "pre_hnm_heatmaps"
+
+    valid = PatchIndex.load(output_dir)
 
     # get number of classes
     just_patch_classes = remove_item_from_dict(valid.labels, "background")
     num_classes = len(just_patch_classes)
 
-    output_dir = experiment_root / "valid_index"
-    results_dir_name = "pre_hnm_results"
-    heatmap_dir_name = "pre_hnm_heatmaps"
     valid_results = PatchIndexResults(valid)
 
-    for patchset in valid:
+    for patchset in valid_results:
         valid_set = SlideDataset(patchset)
         probs_out = inference_on_slide(valid_set, classifier, num_classes, 128, 80, 1)
         probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
-        patchset_results = PatchSetResults(patchset, probs_df)
-        patchset_results.save_csv(output_dir / results_dir_name)
-        patchset.heatmap.save_heatmap(output_dir / heatmap_dir_name)
+        patchset = PatchSetResults(patchset, probs_df)
+        patchset.save_csv(output_dir / results_dir_name)
+        patchset.save_heatmap(output_dir / heatmap_dir_name)
 
     valid_results.save(output_dir, results_dir_name, heatmap_dir_name)
 

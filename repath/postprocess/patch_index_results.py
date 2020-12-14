@@ -139,8 +139,4 @@ class PatchIndexResults(PatchIndex):
         rtn = cls(dataset, patches)
         return rtn
 
-    @classmethod
-    def for_dataset(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndex':
-        patchsets = [PatchSet.for_slide(s, a, label, tags, dataset, tissue_detector, patch_finder) for s, a, label, tags in dataset]
-        return cls(dataset, patchsets)
 
