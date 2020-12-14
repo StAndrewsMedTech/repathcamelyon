@@ -147,19 +147,16 @@ class PatchIndex(Sequence):
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'PatchIndex':
         def patchset_from_row(r: namedtuple) -> PatchSet:
-            print(r)
-
             # parse all the fields
             slide_path = Path(r.slide_path)
             patch_size = int(r.patch_size)
             level = int(r.level)
             patches_df = pd.read_csv(input_dir / r.csv_path)
-            print(r.tags)
             tags = str(r.tags).split(',')
-            labels = json.loads(r.labels.replace('\', '\"'))
+            labels = json.loads(r.labels.replace('\'', '\"'))
 
             # call the constructor
-            patchset = PatchSet(dataset, slide_path, patch_size, level, 
+            patchset = PatchSet(dataset, dataset.to_abs_path(slide_path), patch_size, level, 
                                 patches_df, labels, r.slide_label, tags)
             return patchset
 
