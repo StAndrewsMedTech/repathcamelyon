@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from skimage.color import rgb2hsv
+from skimage.color import rgb2hsv, rgb2gray
 from skimage.filters import threshold_otsu
 
 
@@ -42,3 +42,26 @@ class TissueDetectorOTSU(TissueDetector):
         np_mask = np.logical_or(mask_h, mask_s)
         return np_mask
 
+
+class TissueDetectorGreyScale(TissueDetector):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
+         """creates a dataframe of pixels locations labelled as tissue or not
+        
+        1. Convert PIL image to numpy array
+        2. Convert from RGB to gray scale
+        3. Get masks, any pixel that is less than a threshold (e.g. 0.8)
+        
+        Args:
+            image: A scaled down WSI image. Must be r,g,b.
+
+        Returns:
+            An ndarray of booleans with the same dimensions as the input image
+            True means foreground, False means background
+        """
+        #convert PIL image to numpy array
+        image = np.asarray(image)
+        #convert to gray-scale
+        image_grey = rgb2grey(image)
+        # get masks, any pixel that is less than 0.8
+        np_mask = np.less_equal(image_grey, 0.8)
+        return np_mask
