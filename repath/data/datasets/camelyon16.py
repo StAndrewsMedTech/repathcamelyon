@@ -70,6 +70,8 @@ def training_small():
     tumor_slide_paths = sorted([p.relative_to(root) for p in tumor_slide_dir.glob("*.tif")])
     normal_slide_paths = sorted([p.relative_to(root) for p in normal_slide_dir.glob("*.tif")])
 
+    tag_per_slide = ["patient_001, pn0, annotated", "patient_001, pn1", "patient_002;pn2;annotated"]
+
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
     df["slide"] = tumor_slide_paths + normal_slide_paths

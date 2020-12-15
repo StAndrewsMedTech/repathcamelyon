@@ -165,6 +165,35 @@ def inference_on_valid_slides_pre_hnm() -> None:
     valid_results.save(output_dir, results_dir_name, heatmap_dir_name)
 
 
+def hard_negative_mining_and_retrain() -> None:
+    # read in original training patches
+    train_set = ImageFolder(experiment_root / "training_patches_hnm")
+    # calculate false positives
+
+    # combine together
+
+    # prepare our data
+    batch_size = 128
+    valid_set = ImageFolder(experiment_root / "validation_patches_hnm")
+    train_loader = DataLoader(train_set, batch_size=batch_size)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size)
+
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_loss",
+        dirpath=experiment_root / "patch_model_hnm",
+        filename=f"checkpoint-{epoch:02d}-{val_loss:.2f}.ckpt",
+        save_top_k=1,
+        mode="min",
+    )
+
+    # train our model
+    model = Backbone()
+    classifier = PatchClassifier(model)
+    trainer = pl.Trainer(callbacks=[checkpoint_callback])
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
 def slide_training() -> None:
     pass
 
