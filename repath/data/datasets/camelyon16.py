@@ -79,7 +79,7 @@ def training_small():
     df["label"] = ['tumor'] * len(tumor_slide_paths) + ['normal'] * len(normal_slide_paths)
     df["tags"] = ""
 
-    df = df.sample(3)
+    df = df.sample(12, random_state=777)
 
     return Camelyon16(root, df)
 

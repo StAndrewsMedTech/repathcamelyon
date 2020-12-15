@@ -98,8 +98,43 @@ def training():
 
 
 def testing():
-    # TODO: Add this
-    pass
+    root = project_root() / "data" / "camelyon17" / "raw" / "testing"
+    test_slides_dir = root / "patients"
+    slide_paths = sorted([p.relative_to(root) for p in test_slides.dir.glob("*.tif")])
+    slide_labels = pd.read_csv(root /'evaluation/submission_example.csv')
+    negative_slides = slide_labels[slide_labels.stage == 'negative']
+    micro_slides = slide_labels[slide_labels.stage == 'micro']
+    macro_slides = slide_labels[slide_labels.stage == 'macro']
+    itc_slides = slide_labels[slide_labels.stage == 'itc']
 
+    negative_slide_paths = [path for path in slide_paths for slide in negative_slides.patient if slide in path]
+    micro_slide_paths = [path for path in slide_paths for slide in micro_slides.patient if slide in path]
+    macro_slide_paths = [path for path in slide_paths for slide in macro_slides.patient if slide in path]
+    itc_slide_paths = [path for path in slide_paths for slide in itc_slides.patient if slide in path]
+
+    #patient level labels
+    pN0_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0'])]
+    pN1_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1'])]
+    pN0(i+)_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0(i+)'])]
+    pN1mi_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1mi'])]
+
+    pN0_names = pN0_slides.patient.str.split('.').str[0]
+    pN0_paths = [path for path in slide_paths for name in pN0_names if name in path]
+
+    pN1_names = pN1_slides.patient.str.split('.').str[0]
+    pN1_paths = [path for path in slide_paths for name in pN1_names if name in path]
+
+    pN0(i+)_names = pN0(i+)_slides.patient.str.split('.').str[0]
+    pN0(i+)_paths = [path for path in slide_paths for name in pN0(i+)_names if name in path]
+
+    pN1mi_names = pN1mi_slides.patient.str.split('.').str[0]
+    pN1mi_paths = [path for path in slide_paths for name in pN1mi_names if name in path]
+
+    # turn them into a data frame and pad with empty annotation paths
+    df = pd.DataFrame()
+    df["slide"] = slide_paths
+    df["label"] = ['negative'] * len(negative_slide_paths) + ['macro'] * len(macro_slide_paths) + ['micro'] * len(micro_slide_paths) + ['itc'] * len(itc_slide_paths)
+    df["patient_label"] = ['pN0'] * len(pN0_paths) + ['pN1']* len(pN1_paths) + ['pN0(i+)'] * len(pN0(i+)_paths) + ['pN1mi'] * len(pN1mi_paths)
+    df["tags"] = ""
 
 

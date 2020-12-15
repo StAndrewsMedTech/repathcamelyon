@@ -17,25 +17,16 @@ from repath.utils.geometry import Shape, Size, Point
 
 
 class PatchSetResults(PatchSet):
-    def __init__(self, patchset, probabilities) -> None:
-        self.dataset = patchset.dataset
-        self.slide_path = patchset.slide_path
-        self.level = patchset.level
-        self.size = patchset.size
-        self.df = pd.concat((patchset.df, probabilities), axis=1)
-        self.labels = patchset.labels
-        self.slide_label = patchset.slide_label
-        self.tags = patchset.tags
-
-    def __len__(self):
-        return len(self.patches_df)
-
-    def __getitem__(self, idx):
-        return self.patches_df.iterrows()[idx]
-
-    @property
-    def abs_slide_path(self):
-        return self.dataset.to_abs_path(self.slide_path)
+    def __init__(self, ps: PatchSet, probabilities) -> None:
+        super().__init__(
+            ps.dataset,
+            ps.slide_path,
+            ps.level,
+            ps.patch_size,
+            pd.concat((ps.patches_df, probabilities), axis=1),
+            ps.labels,
+            ps.slide_label,
+            ps.tags)
 
     def to_heatmap(self, class_name: str) -> np.array:
         self.df.columns = [colname.lower() for colname in self.df.columns]
@@ -84,14 +75,7 @@ class PatchSetResults(PatchSet):
 
 class PatchIndexResults(PatchIndex):
     def __init__(self, patch_index: PatchIndex) -> None:
-        self.dataset = patch_index.dataset
-        self.patches = patch_index.patches
-
-    def __len__(self):
-        return len(self.patches)
-
-    def __getitem__(self, idx):
-        return self.patches[idx]
+        super.__init__(patch_index.dataset, patch_index.patches)
 
     def save(self, output_dir: Path, results_dir: Path, heatmap_dir: Path) -> None:
         def to_dict_and_frame(patchset):

@@ -19,35 +19,20 @@ class PatchSet(Sequence):
     def __init__(
         self,
         dataset: Dataset,
-        slide_path: Path,
         patch_size: int,
         level: int,
-        patches_df: pd.DataFrame,
-        labels: Dict[str, int],
-        slide_label: str,
-        tags: List[str]
+        patches_df: pd.DataFrame,  # x, y, label, slide (int) - an index into the dataset
     ) -> None:
         self.dataset = dataset
-        self.slide_path = dataset.to_rel_path(slide_path)
-        self.level = level
         self.patch_size = patch_size
+        self.level = level
         self.patches_df = patches_df
-        self.labels = labels
-        self.slide_label = slide_label
-        self.tags = tags
 
     def __len__(self):
         return len(self.patches_df)
 
     def __getitem__(self, idx):
         return self.patches_df.iterrows()[idx]
-
-    @property
-    def abs_slide_path(self):
-        return self.dataset.to_abs_path(self.slide_path)
-
-    def open_slide(self):
-        return self.dataset.slide_cls(self.abs_slide_path)
 
     def summary(self) -> pd.DataFrame:
         by_label = self.patches_df.groupby("label").size()
@@ -65,6 +50,28 @@ class PatchSet(Sequence):
         summary = summary.replace(np.nan, 0)  # if there are no patches for some classes
         return summary
 
+    def save_patches(self, output_dir: Path) -> None:
+        # TODO: update this
+        with self.dataset.slide_cls(self.slide_path) as slide:
+            for row in self.patches_df.itertuples():
+                region = Region.patch(row.x, row.y, self.patch_size, self.level)
+                image = slide.read_region(region)
+                escaped_image_path = str(self.slide_path)[:-4].replace('/', '-')
+                image_path = output_dir / row.label / escaped_image_path
+                image.save(image_path, '.png')
+
+
+class SlidePatchSet(PatchSet):
+    def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame) -> None:
+        super().__init__(dataset, patch_size, level, patches_df)
+
+    @property
+    def abs_slide_path(self):
+        return self.dataset.to_abs_path(self.slide_path)
+
+    def open_slide(self):
+        return self.dataset.slide_cls(self.abs_slide_path)
+
     def labels_map(self, shape: Shape, factor: int, bg: int) -> np.array:
         # TODO: This is hard to use because you need to know the shape and scale
         # perhaps it should just ask for a level?
@@ -76,18 +83,9 @@ class PatchSet(Sequence):
             cv2.rectangle(img, start, end, p.label, -1)
         return img.astype("int")
 
-    def save_patches(self, output_dir: Path) -> None:
-        with self.dataset.slide_cls(self.slide_path) as slide:
-            for row in self.patches_df.itertuples():
-                region = Region.patch(row.x, row.y, self.patch_size, self.level)
-                image = slide.read_region(region)
-                escaped_image_path = str(self.slide_path)[:-4].replace('/', '-')
-                image_path = output_dir / row.label / escaped_image_path
-                image.save(image_path, '.png')
-
     @classmethod
     def for_slide(cls, slide_path: Path, annotation_path: Path, slide_label: str, tags: List[str], dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
-        with dataset.slide_cls(slide_path) as slide:
+        with idx, dataset.slide_cls(slide_path) as enumerate(slide):
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             annotations = dataset.load_annotations(annotation_path)
             labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
@@ -96,12 +94,13 @@ class PatchSet(Sequence):
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
             df, level, size = patch_finder(labels_image)
+            df['slide_idx'] = idx
             patchset = cls(dataset, slide_path, size, level, df, dataset.labels, slide_label, tags)
             return patchset
 
 
 class PatchIndex(Sequence):
-    def __init__(self, dataset: Dataset, patches: List[PatchSet]) -> None:
+    def __init__(self, dataset: Dataset, patches: List[SlidePatchSet]) -> None:
         self.dataset = dataset
         self.patches = patches
 
@@ -117,6 +116,12 @@ class PatchIndex(Sequence):
         rtn = rtn.reset_index()
         rtn = rtn.drop('index', axis=1)
         return rtn
+
+    def to_patchset(self) -> PatchSet:
+        # combine all patchsets into one
+        frames = [ps.patches_df for ps in self.patches]
+        patches_df =  pd.concat(frames, axis=0)
+        return PatchSet(self.dataset, self.patches[0].patch_size, self.patches[0].level, patches_df)
 
     def save(self, output_dir: Path) -> None:
         def to_dict_and_frame(patchset):
@@ -172,5 +177,5 @@ class PatchIndex(Sequence):
 
     @classmethod
     def for_dataset(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'PatchIndex':
-        patchsets = [PatchSet.for_slide(s, a, label, tags, dataset, tissue_detector, patch_finder) for s, a, label, tags in dataset]
+        patchsets = [SlidePatchSet.for_slide(s, a, label, tags, dataset, tissue_detector, patch_finder) for s, a, label, tags in dataset]
         return cls(dataset, patchsets)
