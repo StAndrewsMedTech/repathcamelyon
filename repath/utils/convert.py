@@ -54,3 +54,16 @@ def to_frame_with_locations(
     samples["row"] = samples["row"].astype(int)
     samples["column"] = samples["column"].astype(int)
     return samples
+
+
+def remove_item_from_dict(dict_in: dict, key_to_remove: str) -> dict:
+    """ remove one key value pair from a dictionary by specifying the key to remove
+    Args:
+        dict_in: dictionary to remove an item from
+        key_to_remove: the key of the key value pair to be removed
+    Returns:
+        the dictionary without the specified item
+    """
+    dict_out = dict(dict_in)
+    del dict_out[key_to_remove]
+    return dict_out

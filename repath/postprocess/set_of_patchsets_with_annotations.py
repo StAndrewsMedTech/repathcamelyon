@@ -5,6 +5,8 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc, accuracy_sco
 
 from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve
 
+
+
 def calc_patch_level_metrics(all_patches, optimal_threshold, ci=False, nreps=1000):
     # Accuracy
     all_patches['predictions'] = np.where(np.greater_equal(all_patches.probability, optimal_threshold), 'tumor',

@@ -1,11 +1,16 @@
+import pandas as pd
 from pytorch_lightning.metrics import Accuracy
 
 from repath.utils.paths import project_root
+from repath.utils.convert import remove_item_from_dict
 from repath.preprocess.patching import PatchIndex
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder
 from repath.patch_classification.models.simple import Backbone
+from repath.postprocess.slide_dataset import SlideDataset
+from repath.postprocess.prediction import inference_on_slide
+from repath.postprocess.patch_index_results import PatchSetResults, PatchIndexResults
 
 
 """
@@ -100,34 +105,64 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
-def patch_classification_metrics() -> None:
-    # save the train and valid patch indexes
-    valid = PatchIndex.load(experiment_root / "valid_index")
+def inference_on_train_slides_pre_hnm() -> None:
 
-    # predict for every patch in the patch index
-    batch_size = 128
-
-    num_devices = torch.cuda.device_count()
-
-    # load the model
     cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
     classifier = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path, model=Backbone()
     )
 
-    # put the classifier on all the devices
-    classifier = classifier
+    output_dir = experiment_root / "train_index"
+    results_dir_name = "pre_hnm_results"
+    heatmap_dir_name = "pre_hnm_heatmaps"
 
-    for patchset in valid:
+    train = PatchIndex.load(output_dir)
+
+    # get number of classes
+    just_patch_classes = remove_item_from_dict(train.labels, "background")
+    num_classes = len(just_patch_classes)
+
+    train_results = PatchIndexResults(train)
+
+    for patchset in train_results:
+        train_set = SlideDataset(patchset)
+        probs_out = inference_on_slide(train_set, classifier, num_classes, 128, 80, 1)
+        probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
+        patchset = PatchSetResults(patchset, probs_df)
+        patchset.save_csv(output_dir / results_dir_name)
+        patchset.save_heatmap(output_dir / heatmap_dir_name)
+
+    train_results.save(output_dir, results_dir_name, heatmap_dir_name)
+
+
+def inference_on_valid_slides_pre_hnm() -> None:
+
+    cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
+    classifier = PatchClassifier.load_from_checkpoint(
+        checkpoint_path=cp_path, model=Backbone()
+    )
+
+    output_dir = experiment_root / "valid_index"
+    results_dir_name = "pre_hnm_results"
+    heatmap_dir_name = "pre_hnm_heatmaps"
+
+    valid = PatchIndex.load(output_dir)
+
+    # get number of classes
+    just_patch_classes = remove_item_from_dict(valid.labels, "background")
+    num_classes = len(just_patch_classes)
+
+    valid_results = PatchIndexResults(valid)
+
+    for patchset in valid_results:
         valid_set = SlideDataset(patchset)
-        # split the valid set into 8 parts
-        # create 8 data loaders (on for each GPU)
-        # for each each classifier infer on it's dataloader
-        # reassemble the predictions into one tensor, reassember into a prediction for each patch in patch set
+        probs_out = inference_on_slide(valid_set, classifier, num_classes, 128, 80, 1)
+        probs_df = pd.DataFrame(probs_out, columns=just_patch_classes)
+        patchset = PatchSetResults(patchset, probs_df)
+        patchset.save_csv(output_dir / results_dir_name)
+        patchset.save_heatmap(output_dir / heatmap_dir_name)
 
-
-def postprocessing() -> None:
-    pass
+    valid_results.save(output_dir, results_dir_name, heatmap_dir_name)
 
 
 def slide_training() -> None:
