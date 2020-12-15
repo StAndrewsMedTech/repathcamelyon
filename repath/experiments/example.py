@@ -116,7 +116,7 @@ def patch_classification_metrics() -> None:
     )
 
     # put the classifier on all the devices
-    classifier.to_device(["""add here"""])
+    classifier = classifier
 
     for patchset in valid:
         valid_set = SlideDataset(patchset)
