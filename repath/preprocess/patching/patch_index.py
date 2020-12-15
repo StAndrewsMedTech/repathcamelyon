@@ -53,7 +53,7 @@ class PatchSet(Sequence):
         by_label = self.patches_df.groupby("label").size()
         labels = {v: k for k, v in self.labels.items()}
         count_df = by_label.to_frame().T.rename(columns = labels)
-        columns = ['slide'] + list(labels.values())
+        columns = ['slide', 'slide_label'] + list(labels.values())
         summary = pd.DataFrame(columns=columns)
         for l in labels.values():
             if l in count_df:
@@ -61,6 +61,7 @@ class PatchSet(Sequence):
             else:
                 summary[l] = 0
         summary['slide'] = self.slide_path
+        summary['slide_label'] = self.slide_label
         summary = summary.replace(np.nan, 0)  # if there are no patches for some classes
         return summary
 
