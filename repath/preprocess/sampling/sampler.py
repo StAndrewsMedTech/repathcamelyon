@@ -6,7 +6,7 @@ from repath.utils.convert import remove_item_from_dict
 
 from repath.preprocess.patching.patch_index import CombinedPatchSet, SlidesIndex, SlidePatchSet
 
-def balanced_sample(index: SlidesIndex, num_samples: int, floor_samples: int = 1000) -> SlidesIndex:
+def balanced_sample(index: SlidesIndex, num_samples: int, floor_samples: int = 1000) -> CombinedPatchSet:
 
     # get sumamries for all slides
     summaries = index.summary()
