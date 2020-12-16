@@ -35,7 +35,7 @@ class Camelyon17(Dataset):
         return {"background": 0, "normal": 1, "tumor": 2}
 
     def slide_label(self) -> Dict[str, int]:
-        return {"negative": 0, "micro": 1, "macro":2, 'itc': 3}
+        return {"negative": 0, "itc": 1,  "macro": 2, "micro": 3}
 
 def training():
     # set up the paths to the slides and annotations
@@ -43,55 +43,70 @@ def training():
     annotations_dir = root / "lesion_annotations"
     
     # all paths are relative to the dataset 'root'
-    annotation_paths = sorted([join(root,f) for root,dirs,files in os.walk(root) for f in files if ".xml" in f])
-    slide_paths = sorted([join(root,f) for root,dirs,files in os.walk(root) for f in files if ".tif" in f])
-   
+    slide_paths = sorted([os.path.relpath(os.path.join(dirpath, file), root) for (dirpath, dirnames, filenames) in os.walk(root) for file in filenames if ".tif" in file])
+    annotation_paths = sorted([os.path.relpath(os.path.join(dirpath, file), root) for (dirpath, dirnames, filenames) in os.walk(root) for file in filenames if ".xml" in file])
+
     slide_names = []
-    for path in annotation_paths:
+    for path in slide_paths:
         head, tail = os.path.split(path)
-        slide_name = tail.split('.')[0] + '.tif'
-        slide_names.appned(slide_name)
+        slide_names.appned(tail.split('.')[0])
     
-    slides_with_annotations_paths = [path for path in slide_paths for slide_name in slide_names if slide_name in path]
-    slides_without_annotations = [path for path  in slide_paths if path not in slides_with_annotations_paths]
-
-    #slide level labels
-    slide_labels = pd.read_csv(root /'stage_labels.csv')
-    negative_slides = slide_labels[slide_labels.stage == 'negative']
-    micro_slides = slide_labels[slide_labels.stage == 'micro']
-    macro_slides = slide_labels[slide_labels.stage == 'macro']
-    itc_slides = slide_labels[slide_labels.stage == 'itc']
-
-    negative_slide_paths = [path for path in slide_paths for slide in negative_slides.patient if slide in path]
-    micro_slide_paths = [path for path in slide_paths for slide in micro_slides.patient if slide in path]
-    macro_slide_paths = [path for path in slide_paths for slide in macro_slides.patient if slide in path]
-    itc_slide_paths = [path for path in slide_paths for slide in itc_slides.patient if slide in path]
-
-    #patient level labels
-    pN0_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0'])]
-    pN1_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1'])]
-    pN0(i+)_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0(i+)'])]
-    pN1mi_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1mi'])]
     
-    pN0_names = pN0_slides.patient.str.split('.').str[0]
-    pN0_paths = [path for path in slide_paths for name in pN0_names if name in path]
+    slides_annotations_paths = []
+    for name in slide_names:
+        for anno_path in annotation_paths:
+            if name in anno_path:
+                    slides_annotations_paths.append(anno_path)
+                else:
+                    slides_annotations_paths.append("")
 
-    pN1_names = pN1_slides.patient.str.split('.').str[0]
-    pN1_paths = [path for path in slide_paths for name in pN1_names if name in path]
-    
-    pN0(i+)_names = pN0(i+)_slides.patient.str.split('.').str[0]
-    pN0(i+)_paths = [path for path in slide_paths for name in pN0(i+)_names if name in path]
-    
-    pN1mi_names = pN1mi_slides.patient.str.split('.').str[0]
-    pN1mi_paths = [path for path in slide_paths for name in pN1mi_names if name in path]
+    annotation_names = []
+    for path in annotation_paths:
+        head, tail =  os.path.split(path)
+        annotation_names.append(tail.split('.')[0])
 
+    labels = pd.read_csv(root / 'stage_labels.csv')
+    slides_labels_df =labels.loc[labels.stage.isin(["itc", "negative", "micro", "macro"])] 
+    slide_level_labels = slides_labels_df.values.tolist()
+    
+    slide_labels = []
+    for lst in slide_level_labels:
+        if  lst[0].split('.')[0]  in slide_names:
+            slide_labels.append(lst[1])
+    
+    patient_labels_df = labels.loc[labels.stage.isin(["pN0", "pN1", "pN2", "pN0(i+)", "pN1mi"])]
+    patient_level_labels = patient_labels_df.values.tolist()
+    
+
+    patient_names =  patient_labels_df.patient.str.split('.')
+    patient_names = [row[0] for row in patient_names ]
+    
+    def intersection(lst1, lst2): 
+    return list(set(lst1) & set(lst2)) 
+  
+    slides_names_with_anno = intersection(slide_names, annotation_names)
+    slides_names_with_no_anno = [item for item in slide_names if item not in slides_names_with_anno]
+
+
+    tags = []
+    for sname in slide_names:
+        for row in patient_level_labels:
+            name = row[0].split('.')[0]
+            label = row[1]
+            tag = ''
+            if sname in slides_names_with_anno and name in sname:
+                tag = name + ';' + label + ';' + 'annotated'
+            elif sname in slides_names_with_no_anno and name in sname:
+                tag = name + ';' + label 
+            tags.append(tag)
+    tags = [tag for tag in tags if tag != ""]
+    
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
     df["slide"] = slide_paths 
-    df["annotation"] = slide_with_annotation_paths + ["" for _ in range(len(slides_without_annotations_paths))]
-    df["label"] = ['negative'] * len(negative_slide_paths) + ['macro'] * len(macro_slide_paths) + ['micro'] * len(micro_slide_paths) + ['itc'] * len(itc_slide_paths)
-    df["patient_label"] = ['pN0'] * len(pN0_paths) + ['pN1']* len(pN1_paths) + ['pN0(i+)'] * len(pN0(i+)_paths) + ['pN1mi'] * len(pN1mi_paths)
-    df["tags"] = ""
+    df["annotation"] = slides_annotations_paths 
+    df["label"] = slide_labels
+    df["tags"] = tags 
 
     return Camelyon17(root, df)
 
@@ -101,40 +116,39 @@ def testing():
     root = project_root() / "data" / "camelyon17" / "raw" / "testing"
     test_slides_dir = root / "patients"
     slide_paths = sorted([p.relative_to(root) for p in test_slides.dir.glob("*.tif")])
-    slide_labels = pd.read_csv(root /'evaluation/submission_example.csv')
-    negative_slides = slide_labels[slide_labels.stage == 'negative']
-    micro_slides = slide_labels[slide_labels.stage == 'micro']
-    macro_slides = slide_labels[slide_labels.stage == 'macro']
-    itc_slides = slide_labels[slide_labels.stage == 'itc']
+    labels = pd.read_csv(root /'evaluation/submission_example.csv')
 
-    negative_slide_paths = [path for path in slide_paths for slide in negative_slides.patient if slide in path]
-    micro_slide_paths = [path for path in slide_paths for slide in micro_slides.patient if slide in path]
-    macro_slide_paths = [path for path in slide_paths for slide in macro_slides.patient if slide in path]
-    itc_slide_paths = [path for path in slide_paths for slide in itc_slides.patient if slide in path]
+    slides_labels_df = labels.loc[labels.stage.isin(["itc", "negative", "micro", "macro"])] 
+    slide_level_labels  = slides_labels_df.values.tolist()
+    
+    patient_labels_df = labels.loc[labels.stage.isin(["pN0", "pN1", "pN2", "pN0(i+)", "pN1mi"])]
+    patient_level_labels = patient_labels_df.values.tolist()
 
-    #patient level labels
-    pN0_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0'])]
-    pN1_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1'])]
-    pN0(i+)_slides = slide_labels.loc[slide_labels['stage'].isin(['pN0(i+)'])]
-    pN1mi_slides = slide_labels.loc[slide_labels['stage'].isin(['pN1mi'])]
-
-    pN0_names = pN0_slides.patient.str.split('.').str[0]
-    pN0_paths = [path for path in slide_paths for name in pN0_names if name in path]
-
-    pN1_names = pN1_slides.patient.str.split('.').str[0]
-    pN1_paths = [path for path in slide_paths for name in pN1_names if name in path]
-
-    pN0(i+)_names = pN0(i+)_slides.patient.str.split('.').str[0]
-    pN0(i+)_paths = [path for path in slide_paths for name in pN0(i+)_names if name in path]
-
-    pN1mi_names = pN1mi_slides.patient.str.split('.').str[0]
-    pN1mi_paths = [path for path in slide_paths for name in pN1mi_names if name in path]
-
+    slide_names = []
+    for path in slide_paths:
+        head, tail = os.path.split(path)
+        slide_names.append(tail)
+    
+    slide_labels = []
+    for lst in slide_level_labels:
+        if  lst[0]  in slide_names:
+            slide_labels.append(lst[1])
+    
+    tags = []
+    for lst in patient_level_labels:
+        name = lst[0].split('.')[0]
+        label = lst[1]
+        for spath in slide_paths:
+            if name in str(spath):
+                tag = name + ';' + label
+                tags.append(tag)
+        
+    
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
     df["slide"] = slide_paths
-    df["label"] = ['negative'] * len(negative_slide_paths) + ['macro'] * len(macro_slide_paths) + ['micro'] * len(micro_slide_paths) + ['itc'] * len(itc_slide_paths)
-    df["patient_label"] = ['pN0'] * len(pN0_paths) + ['pN1']* len(pN1_paths) + ['pN0(i+)'] * len(pN0(i+)_paths) + ['pN1mi'] * len(pN1mi_paths)
-    df["tags"] = ""
+    df["annotation"] = ""
+    df["label"] = slide_labels
+    df["tags"] = tags 
 
 
