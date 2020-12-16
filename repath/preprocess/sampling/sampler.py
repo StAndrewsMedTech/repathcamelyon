@@ -4,9 +4,9 @@ from typing import Tuple
 
 from repath.utils.convert import remove_item_from_dict
 
-from repath.preprocess.patching.patch_index import PatchIndex
+from repath.preprocess.patching.patch_index import PatchIndex, PatchSet
 
-def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 100) -> PatchIndex:
+def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 1000) -> PatchIndex:
 
     # get sumamries for all slides
     summaries = index.summary()
@@ -26,18 +26,18 @@ def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 10
         n_patches = floor_samples
 
     # combine all patchsets into one
-    all_patches = pd.DataFrame(columns=index[0].patches_df.columns)
-    for patchset in index:
-        all_patches = pd.concat((all_patches, patchset.patches_df), axis=0)
+    all_patches = index.to_patchset()
+    level = index[0].level
+    size = index[0].size
 
     # sample n patches
-    sampled_patches = pd.DataFrame(columns=index[0].patches_df.columns)
-    print(all_patches)
-    for pc in patch_classes.values():
-        print(pc)
-        class_df = all_patches[all_patches.label == pc]
-        print(class_df.shape, n_patches)
-        class_sample = class_df.sample(n=n_patches, axis=0, replace=False)
-        sampled_patches = pd.concat((sampled_patches, class_sample), axis=0)
+    sampled_patches = PatchSet(index.dataset, size, level, all_patches)
+    for key, value in patch_classes.items():
+        class_n_patches = min(sum_totals[key], n_patches)
+        class_df = all_patches.patches_df[all_patches.patches_df.label == value]
+        print(class_df.shape, class_n_patches)
+        class_sample = class_df.sample(n=class_n_patches, axis=0, replace=False)
+        sampled_patches.patches_df = pd.concat((sampled_patches.patches_df, class_sample), axis=0)
 
     return sampled_patches
+

@@ -16,7 +16,7 @@ from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.utils.geometry import Shape, Size, Point
 
 
-class PatchSetResults(PatchSet):
+class SlidePatchSetResults(SlidePatchSet):
     def __init__(self, ps: PatchSet, probabilities) -> None:
         super().__init__(
             ps.dataset,
@@ -73,7 +73,7 @@ class PatchSetResults(PatchSet):
         cv2.imwrite(img_path, heatmap_out)
 
 
-class PatchIndexResults(PatchIndex):
+class SlidePatchIndexResults(PatchIndex):
     def __init__(self, patch_index: PatchIndex) -> None:
         super.__init__(patch_index.dataset, patch_index.patches)
 

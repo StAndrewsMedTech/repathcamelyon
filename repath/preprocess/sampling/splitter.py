@@ -113,7 +113,7 @@ def split_camelyon17(index: PatchIndex, train_percent: float, seed:int = 5678) -
     valid_patients_mask = [not pt for pt in train_patients_mask]
 
     # split slides into train and valid
-    train_index = index[train_patients_mask]
+    train_index = index[valid_patients_mask]
     valid_index = index[valid_patients_mask]
 
     # check split of patch classes

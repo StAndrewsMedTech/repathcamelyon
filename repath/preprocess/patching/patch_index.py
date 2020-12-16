@@ -61,6 +61,31 @@ class PatchSet(Sequence):
                 image.save(image_path, '.png')
 
 
+    def save(self, output_dir: Path) -> None:
+        info = self.__dict__.copy()
+        info.pop('patches_df')
+
+        index_df = pd.DataFrame(columns=['dataset', 'level', 'patch_size'])
+        # append the info dict to the index dataframe
+        index_df = index_df.append(info, ignore_index=True)
+        # tidy up a bit and save the csv
+        index_df = index_df.astype({"level": int, "patch_size": int})
+        output_dir.mkdir(parents=True, exist_ok=True)  # TODO: What happends if it exists already?
+        index_df.to_csv(output_dir / 'patch_set_index.csv', index=False)
+
+        # save out the patches csv file for this slide
+        csv_path = output_dir / 'patch_set.csv'
+        self.patches_df.to_csv(csv_path, index=False)
+
+
+    @classmethod
+    def load(cls, input_dir: Path) -> 'PatchSet':
+        index = pd.read_csv(input_dir / 'patch_set_index.csv')
+        patches_df = pd.read_csv(input_dir / 'patch_set.csv')
+        rtn = cls(index.dataset[0], index.patch_size[0], index.level[0], patches_df)
+        return rtn
+
+
 class SlidePatchSet(PatchSet):
     def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame) -> None:
         super().__init__(dataset, patch_size, level, patches_df)
