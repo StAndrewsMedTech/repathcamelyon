@@ -3,10 +3,10 @@ import pandas as pd
 from abc import ABCMeta, abstractmethod
 from typing import Tuple
 
-from repath.preprocess.patching import PatchIndex
+from repath.preprocess.patching import SlidesIndex
 
 
-def split_camelyon16(index: PatchIndex, train_percent: float, seed:int = 5678) -> Tuple[PatchIndex, PatchIndex]:
+def split_camelyon16(index: SlidesIndex, train_percent: float, seed:int = 5678) -> Tuple[SlidesIndex, SlidesIndex]:
 
     # get summaries of total patch classes for each slide
     summaries = index.summary()
@@ -56,10 +56,10 @@ def split_camelyon16(index: PatchIndex, train_percent: float, seed:int = 5678) -
         train_index = index[train_slide_numbers]
         valid_index = index[valid_slide_numbers]
 
-    return PatchIndex(index.dataset, train_index), PatchIndex(index.dataset, valid_index)
+    return SlidesIndex(index.dataset, train_index), SlidesIndex(index.dataset, valid_index)
 
 
-def split_camelyon17(index: PatchIndex, train_percent: float, seed:int = 5678) -> Tuple[PatchIndex, PatchIndex]:
+def split_camelyon17(index: SlidesIndex, train_percent: float, seed:int = 5678) -> Tuple[SlidesIndex, SlidesIndex]:
 
     # get summaries of total patch classes for each slide
     summaries = index.summary()

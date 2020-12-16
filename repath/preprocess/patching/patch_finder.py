@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Dict, Tuple
 from random import randint
 
+from pandas.core.arrays import boolean
+
 import numpy as np
 import pandas as pd
 
@@ -29,6 +31,7 @@ class GridPatchFinder(PatchFinder):
         stride: int,  # defined in terms of the labels image space
         border: int = 0,
         jitter: int = 0,
+        remove_background: bool = True
     ) -> None:
         """ Note that the assumption is that the same settings will be used for a number of different patches.
 
@@ -49,6 +52,7 @@ class GridPatchFinder(PatchFinder):
         self.stride = stride
         self.border = border
         self.jitter = jitter
+        self.remove_background = remove_background
 
         # some assumptions
         # 1. patch_size is some integer multiple of a pixel at labels_level
@@ -89,6 +93,10 @@ class GridPatchFinder(PatchFinder):
 
             df["x"] = df["x"].apply(jitter)
             df["y"] = df["y"].apply(jitter)
+
+        # 6. remove the background
+        if self.remove_background:
+            df = df[df.label != 'background']  # TODO: put this in as a method that is optional on the slide patch index (or something)
 
         # return the index and the data required to extract the patches later
         return df, self.patch_level, self.patch_size

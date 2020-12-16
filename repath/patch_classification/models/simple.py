@@ -6,9 +6,9 @@ class Backbone(nn.Module):
         super().__init__()
 
         # mnist images are (1, 28, 28) (channels, width, height) 
-        self.layer_1 = torch.nn.Linear(28 * 28, 128)
+        self.layer_1 = torch.nn.Linear(256 * 256, 128)
         self.layer_2 = torch.nn.Linear(128, 256)
-        self.layer_3 = torch.nn.Linear(256, 10)
+        self.layer_3 = torch.nn.Linear(256, 2)
 
     def forward(self, x):
         batch_size, channels, width, height = x.size()
