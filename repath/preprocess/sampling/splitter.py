@@ -23,16 +23,16 @@ def split_camelyon16(index: PatchIndex, train_percent: float, seed:int = 5678) -
         slide_numbers_valid[key] = n_slides - int(n_slides * train_percent)
 
     # divide each class of slide according to train percent
-    slide_numbers = list(range(index.dataset.shape[0]))
+    slide_numbers = np.array(list(range(len(index.dataset))))
     np.random.seed(seed)
-    normal_slides = slide_numbers[index.dataset.slide_cls == 'normal']
+    normal_slides = slide_numbers[index.dataset.paths.label == 'normal']
     normal_slides_train = np.random.choice(normal_slides, slide_numbers_train['normal'], replace=False)
-    tumor_slides = slide_numbers[index.dataset.slide_cls == 'tumor']
+    tumor_slides = slide_numbers[index.dataset.paths.label == 'tumor']
     tumor_slides_train = np.random.choice(tumor_slides, slide_numbers_train['tumor'], replace=False)
-    train_slide_numbers = normal_slides_train.tolist() + tumor_slides_train.tolist()
+    train_slide_numbers = np.hstack((normal_slides_train, tumor_slides_train))
     valid_slide_numbers = slide_numbers[~train_slide_numbers]
-    train_index = index[train_slide_numbers]
-    valid_index = index[valid_slide_numbers]
+    train_index = [index[idx] for idx in train_slide_numbers]
+    valid_index = [index[idx] for idx in valid_slide_numbers]
 
     # sum total number of tumor patches in each set
     train_summaries = summaries.iloc[train_slide_numbers, :]
@@ -56,7 +56,7 @@ def split_camelyon16(index: PatchIndex, train_percent: float, seed:int = 5678) -
         train_index = index[train_slide_numbers]
         valid_index = index[valid_slide_numbers]
 
-    return train_index, valid_index
+    return PatchIndex(index.dataset, train_index), PatchIndex(index.dataset, valid_index)
 
 
 def split_camelyon17(index: PatchIndex, train_percent: float, seed:int = 5678) -> Tuple[PatchIndex, PatchIndex]:

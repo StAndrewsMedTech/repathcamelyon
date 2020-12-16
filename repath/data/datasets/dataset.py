@@ -23,7 +23,7 @@ class Dataset(Sequence, metaclass=ABCMeta):
         metaclass ([type], optional): [description]. Defaults to ABCMeta.
     """
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
-        # process the paths_df (has two columns 'slide', 'annotation', 'label', 'tags')
+        # process the paths_df (has four columns 'slide', 'annotation', 'label', 'tags')
         # root is stored relative to project_root
         self.root = root.relative_to(project_root())
         self.paths = paths

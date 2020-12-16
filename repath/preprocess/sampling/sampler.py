@@ -6,12 +6,13 @@ from repath.utils.convert import remove_item_from_dict
 
 from repath.preprocess.patching.patch_index import PatchIndex
 
-def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 1000) -> PatchIndex:
+def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 100) -> PatchIndex:
 
     # get sumamries for all slides
     summaries = index.summary()
     sum_totals = summaries.sum(axis=0, numeric_only=True)
-    patch_classes = remove_item_from_dict(index.labels, "background")
+    print(sum_totals)
+    patch_classes = remove_item_from_dict(index.dataset.labels, "background")
 
     n_patches = num_samples
     for pc in patch_classes.keys():
@@ -31,10 +32,12 @@ def balanced_sample(index: PatchIndex, num_samples: int, floor_samples: int = 10
 
     # sample n patches
     sampled_patches = pd.DataFrame(columns=index[0].patches_df.columns)
-    for pc in patch_classes.keys():
-        class_df = sampled_patches[sampled_patches.label == pc]
+    print(all_patches)
+    for pc in patch_classes.values():
+        print(pc)
+        class_df = all_patches[all_patches.label == pc]
+        print(class_df.shape, n_patches)
         class_sample = class_df.sample(n=n_patches, axis=0, replace=False)
         sampled_patches = pd.concat((sampled_patches, class_sample), axis=0)
 
     return sampled_patches
-
