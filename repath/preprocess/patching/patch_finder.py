@@ -70,10 +70,11 @@ class GridPatchFinder(PatchFinder):
         """
         scale_factor = 2 ** (self.labels_level - self.patch_level)
         kernel_size = int(self.patch_size / scale_factor)
+        label_level_stride = int(self.stride / scale_factor)
 
         # TODO - Needs to select no the max label but the one with the most area? - needs thinking about this!
         # The pooling operation might be a parameter for the patch finder.
-        patch_labels = pool2d(labels_image, kernel_size, kernel_size, 0)
+        patch_labels = pool2d(labels_image, kernel_size, label_level_stride, 0)
 
         df = to_frame_with_locations(patch_labels, "label")
         df.row *= self.patch_size

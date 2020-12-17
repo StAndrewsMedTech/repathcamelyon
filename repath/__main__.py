@@ -2,6 +2,7 @@
 
 from click import group, version_option, command, argument
 
+import repath.experiments.wang as wang
 
 @group()
 @version_option("1.0.0")
@@ -10,15 +11,16 @@ def main():
 
 
 @command()
-@argument("experiment", required=True)
-@argument("step")
-def run(experiment: str, step: str) -> None:
+@argument("experiment")
+@argument("step", required=False)
+def run(experiment: str, step: str = None) -> None:
     """Run an EXPERIMENT with optional STEP."""
     print(f"{experiment}: {step}")
+    eval(f"{experiment}.{step}()")
 
 
 @command()
-@argument("experiment")
+@argument("experiment", required=False)
 def show(experiment: str) -> None:
     """List all the experiments or all the steps for an EXPERIMENT."""
     print(f"{experiment}")
