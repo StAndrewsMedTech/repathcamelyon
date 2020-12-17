@@ -7,10 +7,12 @@ from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve
 
 
 
-def calc_patch_level_metrics(all_patches, optimal_threshold, ci=False, nreps=1000):
+def calc_patch_level_metrics(all_patches: CombinedPatchSet, poslabel, optimal_threshold, ci=False, nreps=1000):
+
+    class_labels = remove_label_from_dict(all_patches.dataset.labels, 'background')
     # Accuracy
-    all_patches['predictions'] = np.where(np.greater_equal(all_patches.probability, optimal_threshold), 'tumor',
-                                          'unlabelled')
+    predictions = np.where(np.greater_equal(all_patches.patches_df[poslabel], optimal_threshold), poslabel,
+                                          'other')
     all_patches['label'] = [patch.lower() for patch in all_patches['label']]
     patch_accuracy = np.sum(all_patches.label == all_patches.predictions) / all_patches.shape[0]
     tn, fp, fn, tp = conf_mat_raw(all_patches.label.to_numpy(), all_patches.predictions.to_numpy(),

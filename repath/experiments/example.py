@@ -134,6 +134,7 @@ def hard_negative_mining_and_retrain() -> None:
     FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5,
                              train_results.patches_df['label'] == patch_dict['tumor'])
     train_results.patches_df = train_results.patches_df[FP_mask]
+    ### To do put in a limit on how many patches to add
     train_results.save_patches(experiment_root / "training_patches")
 
     # prepare our data
@@ -248,6 +249,37 @@ def inference_on_slides() -> None:
     test_results_17_post = SlidesIndexResults.predict_dataset(test17, classifier_post_hnm, batsz, nwork,
                                                               outdir_tst17_post, results_dir_name, heatmap_dir_name)
     test_results_17_post.save_results_index()
+
+
+def calculate_patch_level_results() -> None:
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    # Camelyon 16 details
+    outdir_val16 = experiment_root / "valid_index"
+    outdir_tst16 = experiment_root / "test_index"
+    # Camelyon 17 details
+    outdir_val17 = experiment_root / "valid_index_17"
+    outdir_tst17 = experiment_root / "test_index_17"
+
+    # Pre hnm details
+    outdir_val16_pre = outdir_val16 / "pre_hnm_results"
+    outdir_val17_pre = outdir_val17 / "pre_hnm_results"
+    outdir_tst16_pre = outdir_tst16 / "pre_hnm_results"
+    outdir_tst17_pre = outdir_tst17 / "pre_hnm_results"
+
+    # Post hnm details
+    outdir_val16_post = outdir_val16 / "post_hnm_results"
+    outdir_val17_post = outdir_val17 / "post_hnm_results"
+    outdir_tst16_post = outdir_tst16 / "post_hnm_results"
+    outdir_tst17_post = outdir_tst17 / "post_hnm_results"
+
+
+    valid_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), outdir_val16_pre,
+                                                                 results_dir_name, heatmap_dir_name)
+    valid_results_16_pre = valid_results_16_pre.as_combined()
+
 
 
 def calculate_lesion_level_results() -> None:

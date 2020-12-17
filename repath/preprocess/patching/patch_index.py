@@ -82,6 +82,47 @@ class CombinedPatchSet(PatchSet):
                     image.save(image_path)
 
 
+class CombinedIndex(Sequence):
+    def __init__(self, cps: List[CombinedPatchSet]) -> None:
+        self.datasets = [cp.dataset for cp in cps]
+        self.patchsizes = [cp.patch_size for cp in cps]
+        self.levels = [cp.level for cp in cps]
+        patches_dfs = [cp.patches_df for cp in cps]
+        patches_df = pd.concat(patches_dfs, axis=0)
+        cps_index = []
+        for idx, cp in enumerate(cps):
+            cps_index.extend([len(cps)] * idx)
+        patches_df['cps_idx'] = cps_index
+        self.patches_df = patches_df
+
+    def save_patches(self, output_dir: Path) -> None:
+        for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
+            for slide_idx, sl_group in cps_group.groupby('slide_idx'):
+                slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
+                with self.datasets[cps_idx].slide_cls(slide_path) as slide:
+                    print(f"Writing patches for {self.datasets[cps_idx].to_rel_path(slide_path)}")
+                    for row in sl_group.itertuples():
+                        # read the patch image from the slide
+                        region = Region.patch(row.x, row.y, self.patchsizes[cps_idx], self.levels[cps_idx])
+                        image = slide.read_region(region)
+
+                        # get the patch label as a string
+                        labels = {v: k for k, v in self.datasets[cps_idx].labels.items()}
+                        label = labels[row.label]
+
+                        # ensure the output directory exists
+                        output_subdir = output_dir / label
+                        output_subdir.mkdir(parents=True, exist_ok=True)
+
+                        # write out the slide
+                        rel_slide_path = self.datasets[cps_idx].to_rel_path(slide_path)
+                        slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
+                        patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
+                        image_path = output_dir / label / patch_filename
+                        image.save(image_path)
+
+
+
 class SlidePatchSet(PatchSet):
     def __init__(
         self, 
@@ -307,7 +348,7 @@ class SlidesIndexResults(SlidesIndex):
 
     @classmethod
     def load_results_index(cls, dataset, input_dir, results_dir_name, heatmap_dir_name):
-        def patchset_from_row(r: namedtuple) -> PatchSet:
+        def patchset_from_row(r: namedtuple) -> SlidePatchSet:
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSetResults(int(r.slide_idx), dataset, int(r.patch_size),
                                  int(r.level), patches_df)
