@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from repath.preprocess.patching import SlidePatchSet
+# from repath.preprocess.patching import SlidePatchSet
 
 
 
@@ -37,7 +37,7 @@ def evaluate_loop_dp(model, device, loader, num_classes):
 
 
 
-def inference_on_slide(slide_dataset: SlidePatchSet, model: torch.nn.Module, num_classes: int,
+def inference_on_slide(slide_dataset: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
                        batch_size: int, num_workers: int, ntransforms: int = 1) -> np.array:
 
     """ runs inference for every patch on a slide using data parallel

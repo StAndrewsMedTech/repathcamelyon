@@ -17,7 +17,7 @@ HAS_CONDA=True
 endif
 
 # network
-JUPYTER_PORT := 8260
+JUPYTER_PORT := 8800
 
 #################################################################################
 # PYTHON ENVIRONMENT COMMANDS                                                   #
@@ -92,15 +92,7 @@ docker_run:
 				--gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) \
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
 				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
-				-v /raid/experiments:/home/ubuntu/$(PROJECT_NAME)/experiments \
-				-it $(PROJECT_NAME):latest
-
-docker_run_tensorboard:
-	docker run --shm-size=8G \
-		--gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) -p 6007:6007 \
-				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
-				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
-				-v /raid/experiments:/home/ubuntu/$(PROJECT_NAME)/experiments \
+				-v /raid/experiments/$(PROJECT_NAME):/home/ubuntu/$(PROJECT_NAME)/experiments \
 				-it $(PROJECT_NAME):latest
 
 docker_run_local:
