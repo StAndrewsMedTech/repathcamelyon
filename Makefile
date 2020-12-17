@@ -17,7 +17,7 @@ HAS_CONDA=True
 endif
 
 # network
-JUPYTER_PORT := 8290
+JUPYTER_PORT := 8800
 
 #################################################################################
 # PYTHON ENVIRONMENT COMMANDS                                                   #
