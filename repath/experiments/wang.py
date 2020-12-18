@@ -103,8 +103,8 @@ def train_patch_classifier() -> None:
     ])
 
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, transform=transform)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, transform=transform)
+    train_loader = DataLoader(train_set, batch_size=batch_size, transform=transform, num_workers=80)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, transform=transform, num_workers=80)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(

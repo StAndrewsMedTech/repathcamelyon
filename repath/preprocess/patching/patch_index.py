@@ -139,8 +139,9 @@ class SlidePatchSet(PatchSet):
     ) -> None:
         super().__init__(dataset, patch_size, level, patches_df)
         self.slide_idx = slide_idx
-        abs_slide_path, self.annotation_path, self.label, self.tags = dataset[slide_idx]
+        abs_slide_path, self.annotation_path, self.label, tags = dataset[slide_idx]
         self.slide_path = dataset.to_rel_path(abs_slide_path)
+        self.tags = [tg.strip() for tg in tags.split(';')]
 
     @classmethod
     def index_slide(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
@@ -217,6 +218,7 @@ class SlidesIndex(Sequence):
             # save out the csv file for this slide
             csv_path = ps.slide_path.with_suffix('.csv')
             csv_path.parents[0].mkdir(parents=True, exist_ok=True)
+            print(f"Saving {csv_path}")
             ps.patches_df.to_csv(csv_path, index=False)
 
             # append information about slide to index
