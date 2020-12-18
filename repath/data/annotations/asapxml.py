@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 import xml.etree.ElementTree as ET
 
 from repath.data.annotations.annotation import Annotation
 
 
-def annotation_from_tag(tag: ET.Element) -> Annotation:
+def annotation_from_tag(tag: ET.Element, group_labels: Dict[str, str]) -> Annotation:
     # get the attributes
     name = tag.attrib["Name"]
     group = tag.attrib["PartOfGroup"]
@@ -13,8 +13,10 @@ def annotation_from_tag(tag: ET.Element) -> Annotation:
     coordinate_tags = tag.find("Coordinates")
 
     # groups Tumor, _0 and _1 are tumor annoations and group _2 are normal annoations
-    assert group in ["Tumor", "_0", "_1", "_2"], "Unknown annoation group encountered."
-    label = "tumor" if group in ["Tumor", "_0", "_1"] else "normal"
+    # assert group in ["Tumor", "_0", "_1", "_2"], "Unknown annoation group encountered."
+    # label = "tumor" if group in ["Tumor", "_0", "_1"] else "normal"
+    assert group in group_labels.keys(), "Unknown annoation group encountered."
+    label = group_labels[group]
 
     # parse the coordinate to a list of lists with two floats
     vertices = [(float(c.attrib["X"]), float(c.attrib["Y"])) for c in coordinate_tags]
@@ -23,7 +25,7 @@ def annotation_from_tag(tag: ET.Element) -> Annotation:
     return Annotation(name, annotation_tag, label, vertices)
 
 
-def load_annotations(xml_file_path: Path) -> List[Annotation]:
+def load_annotations(xml_file_path: Path, group_labels: Dict[str, str]) -> List[Annotation]:
     # if the path is empty or a dir then return an empty annotations list
     # TODO: Make sure this requirement is stated in the requirements for
     # load_annotations functions
@@ -36,7 +38,7 @@ def load_annotations(xml_file_path: Path) -> List[Annotation]:
     tags = root.find("Annotations")
 
     # get the type and colour properties and coordinated for each annotation
-    annotations = [annotation_from_tag(tag) for tag in tags]
+    annotations = [annotation_from_tag(tag, group_labels) for tag in tags]
     annotations = [a for a in annotations if a]  # remove None values
 
     return annotations

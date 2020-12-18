@@ -21,8 +21,8 @@ class Camelyon17(Dataset):
         super().__init__(root, paths)
 
     def load_annotations(self, file: Path) -> AnnotationSet:
-        # if there is no annotation file the just pass and empty list
-        annotations = load_annotations(file) if file else []
+        group_labels = {"metastases": "tumor", "normal": "normal"}
+        annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["background", "tumor", "normal"]
         return AnnotationSet(annotations, self.labels, labels_order, "normal")
 
