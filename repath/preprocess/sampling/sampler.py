@@ -1,42 +1,37 @@
+import numpy as np
 import pandas as pd
 from abc import ABCMeta, abstractmethod
-from typing import Tuple
+from typing import List, Tuple
 
 from repath.utils.convert import remove_item_from_dict
 
-from repath.preprocess.patching.patch_index import CombinedPatchSet, SlidesIndex, SlidePatchSet
+from repath.preprocess.patching.patch_index import CombinedIndex, CombinedPatchSet, SlidesIndex, SlidePatchSet
 
-def balanced_sample(index: SlidesIndex, num_samples: int, floor_samples: int = 1000) -> CombinedPatchSet:
+def balanced_sample(indexes: List[SlidesIndex], num_samples: int, floor_samples: int = 1000) -> CombinedPatchSet:
 
-    # get sumamries for all slides
-    summaries = index.summary()
-    sum_totals = summaries.sum(axis=0, numeric_only=True)
-    print(sum_totals)
-    patch_classes = remove_item_from_dict(index.dataset.labels, "background")
+    index = CombinedIndex.for_slide_indexes(indexes)
 
-    n_patches = num_samples
-    for pc in patch_classes.keys():
-        if sum_totals[pc] < n_patches:
-            n_patches = sum_totals[pc]
+    # work out how many of each type of patches you have in the index
+    labels = np.unique(index.patches_df.label)
+    sum_totals = [np.sum(index.patches_df.labels == label) for label in labels]
 
-    # increase no of patches for any classes with transforms
+    # find the count for the class that has the lowest count, so we have balanced classes
+    n_patches = min(sum_totals)
 
-    # is min patches greater than floor
-    if n_patches < floor_samples:
-        n_patches = floor_samples
+    # limit the count for each class to the number of samples we want
+    n_patches = min(n_patches, num_samples)
 
-    # combine all SlidePatchSets into one
-    all_patches = index.as_combined()
+    # make sure that have a minimun number of samples for each class if available
+    # classes with smaller that floor with remain the same
+    n_patches = max(n_patches, floor_samples)
+    sum_totals = np.min(sum_totals, n_patches)  # cap the number sample from each class to n_patches
 
     # sample n patches
-    sampled_patches = pd.DataFrame(columns=all_patches.patches_df.columns)
-    for key, value in patch_classes.items():
-        class_n_patches = min(sum_totals[key], n_patches)
-        class_df = all_patches.patches_df[all_patches.patches_df.label == value]
-        print(class_df.shape, class_n_patches)
-        class_sample = class_df.sample(n=class_n_patches, axis=0, replace=False)
+    sampled_patches = pd.DataFrame(columns=index.patches_df.columns)
+    for idx, label in enumerate(labels):
+        class_df = index.patches_df[index.patches_df.label == label]
+        class_sample = class_df.sample(n=sum_totals[idx], axis=0, replace=False)
         sampled_patches = pd.concat((sampled_patches, class_sample), axis=0)
 
-    rtn = CombinedPatchSet(index.dataset, index.patch_size, index.level, sampled_patches)
-    return rtn
-
+    index.patches_df = sampled_patches
+    return index

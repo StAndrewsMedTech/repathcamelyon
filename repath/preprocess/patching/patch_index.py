@@ -91,9 +91,14 @@ class CombinedIndex(Sequence):
         patches_df = pd.concat(patches_dfs, axis=0)
         cps_index = []
         for idx, cp in enumerate(cps):
-            cps_index.extend([len(cps)] * idx)
+            cps_index.extend([idx] * len(cps))
         patches_df['cps_idx'] = cps_index
         self.patches_df = patches_df
+
+    @classmethod
+    def for_slide_indexes(indexes: List[SlidesIndex]) -> 'CombinedIndex':
+        cps = [index.as_combined() for index in indexes]
+        return CombinedIndex(cps)
 
     def save_patches(self, output_dir: Path) -> None:
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
