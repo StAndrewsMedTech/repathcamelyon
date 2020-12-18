@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 import numpy as np
-import pandas as pdi
+import pandas as pd
 from os import walk
 from os.path import join
 from repath.data.annotations import AnnotationSet
@@ -49,16 +49,15 @@ def training():
     slide_names = []
     for path in slide_paths:
         head, tail = os.path.split(path)
-        slide_names.appned(tail.split('.')[0])
-    
+        slide_names.append(tail.split('.')[0])
     
     slides_annotations_paths = []
     for name in slide_names:
+        a_path = ""
         for anno_path in annotation_paths:
-            if name in anno_path:
-                    slides_annotations_paths.append(anno_path)
-                else:
-                    slides_annotations_paths.append("")
+            if  name in anno_path:
+                a_path = anno_path
+        slides_annotations_paths.append(a_path)
 
     annotation_names = []
     for path in annotation_paths:
@@ -82,7 +81,7 @@ def training():
     patient_names = [row[0] for row in patient_names ]
     
     def intersection(lst1, lst2): 
-    return list(set(lst1) & set(lst2)) 
+        return list(set(lst1) & set(lst2)) 
   
     slides_names_with_anno = intersection(slide_names, annotation_names)
     slides_names_with_no_anno = [item for item in slide_names if item not in slides_names_with_anno]
@@ -109,6 +108,14 @@ def training():
     df["tags"] = tags 
 
     return Camelyon17(root, df)
+
+
+def training_small():
+    # set up the paths to the slides and annotations
+    cam17 = training()
+    df = cam17.paths.sample(12, random_state=777)
+
+    return Camelyon17(project_root() / cam17.root, df)
 
 
 
