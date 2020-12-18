@@ -22,15 +22,24 @@ def split_camelyon16(index: SlidesIndex, train_percent: float, seed:int = 5678) 
         slide_numbers_train[key] = int(n_slides * train_percent)
         slide_numbers_valid[key] = n_slides - int(n_slides * train_percent)
 
+    print("slide_numbers_train", slide_numbers_train)
+    print("slide_numbers_valid", slide_numbers_valid)
+
     # divide each class of slide according to train percent
     slide_numbers = np.array(list(range(len(index.dataset))))
     np.random.seed(seed)
     normal_slides = slide_numbers[index.dataset.paths.label == 'normal']
+    print("normal_slides", normal_slides)
     normal_slides_train = np.random.choice(normal_slides, slide_numbers_train['normal'], replace=False)
+    print("normal_slides_train", normal_slides_train)
     tumor_slides = slide_numbers[index.dataset.paths.label == 'tumor']
+    print("tumor_slides", tumor_slides)
     tumor_slides_train = np.random.choice(tumor_slides, slide_numbers_train['tumor'], replace=False)
+    print("tumor_slides_train", tumor_slides_train)
     train_slide_numbers = np.hstack((normal_slides_train, tumor_slides_train))
-    valid_slide_numbers = slide_numbers[~train_slide_numbers]
+    print("train_slide_numbers", train_slide_numbers)
+    valid_slide_numbers = [item for item in slide_numbers if item not in train_slide_numbers]
+    print("valid_slide_numbers", valid_slide_numbers)
     train_index = [index[idx] for idx in train_slide_numbers]
     valid_index = [index[idx] for idx in valid_slide_numbers]
 

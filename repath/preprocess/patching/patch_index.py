@@ -96,7 +96,7 @@ class CombinedIndex(Sequence):
         self.patches_df = patches_df
 
     @classmethod
-    def for_slide_indexes(indexes: List[SlidesIndex]) -> 'CombinedIndex':
+    def for_slide_indexes(indexes: List['SlidesIndex']) -> 'CombinedIndex':
         cps = [index.as_combined() for index in indexes]
         return CombinedIndex(cps)
 
