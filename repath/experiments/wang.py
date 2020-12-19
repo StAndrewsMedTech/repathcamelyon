@@ -1,5 +1,7 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning import loggers as pl_loggers
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -54,10 +56,10 @@ class PatchClassifier(pl.LightningModule):
                                     momentum=0.9, 
                                     weight_decay=0.0005)
         scheduler = {
-            'scheduler': torch.optim.StepLR(optimizer, step_size=50000, gamma=0.5),
+            'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.5),
             'interval': 'step' 
         }
-        return optimizer, scheduler
+        return [optimizer], [scheduler]
 
 """
 Experiment step
@@ -89,11 +91,6 @@ def preprocess_samples() -> None:
 
 
 def train_patch_classifier() -> None:
-    # prepare our data
-    batch_size = 32
-    train_set = ImageFolder.load(experiment_root / "training_patches")
-    valid_set = ImageFolder.load(experiment_root / "validation_patches")
-    
     # transforms
     transform = Compose([
         RandomRotation((0, 360)),
@@ -102,20 +99,37 @@ def train_patch_classifier() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    # prepare our data
+    batch_size = 32
+    train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, transform=transform, num_workers=80)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, transform=transform, num_workers=80)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=80)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=80)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
+        monitor="val_accuracy",
         dirpath=experiment_root / "patch_model",
         filename=f"checkpoint.ckpt",
         save_top_k=1,
-        mode="min",
+        mode="max",
     )
+
+    early_stop_callback = EarlyStopping(
+    monitor='val_accuracy',
+    min_delta=0.00,
+    patience=5,
+    verbose=False,
+    mode='max'
+    )
+
+    # create a logger
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
 
     # train our model
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback])
+    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
