@@ -13,7 +13,7 @@ def balanced_sample(indexes: List[SlidesIndex], num_samples: int, floor_samples:
 
     # work out how many of each type of patches you have in the index
     labels = np.unique(index.patches_df.label)
-    sum_totals = [np.sum(index.patches_df.labels == label) for label in labels]
+    sum_totals = [np.sum(index.patches_df.label == label) for label in labels]
 
     # find the count for the class that has the lowest count, so we have balanced classes
     n_patches = min(sum_totals)
@@ -24,7 +24,7 @@ def balanced_sample(indexes: List[SlidesIndex], num_samples: int, floor_samples:
     # make sure that have a minimun number of samples for each class if available
     # classes with smaller that floor with remain the same
     n_patches = max(n_patches, floor_samples)
-    sum_totals = np.min(sum_totals, n_patches)  # cap the number sample from each class to n_patches
+    sum_totals = np.minimum(sum_totals, n_patches)  # cap the number sample from each class to n_patches
 
     # sample n patches
     sampled_patches = pd.DataFrame(columns=index.patches_df.columns)

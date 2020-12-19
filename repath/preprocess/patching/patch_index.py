@@ -82,23 +82,26 @@ class CombinedPatchSet(PatchSet):
                     image.save(image_path)
 
 
-class CombinedIndex(Sequence):
+class CombinedIndex(object):
     def __init__(self, cps: List[CombinedPatchSet]) -> None:
         self.datasets = [cp.dataset for cp in cps]
         self.patchsizes = [cp.patch_size for cp in cps]
         self.levels = [cp.level for cp in cps]
         patches_dfs = [cp.patches_df for cp in cps]
         patches_df = pd.concat(patches_dfs, axis=0)
-        cps_index = []
-        for idx, cp in enumerate(cps):
-            cps_index.extend([idx] * len(cps))
+        cps_index = [[idx] * len(cp) for idx, cp in enumerate(cps)]
+        cps_index = [item for sublist in cps_index for item in sublist]
         patches_df['cps_idx'] = cps_index
         self.patches_df = patches_df
 
+    def __len__(self):
+        return len(self.patches_df)
+
     @classmethod
-    def for_slide_indexes(indexes: List['SlidesIndex']) -> 'CombinedIndex':
+    def for_slide_indexes(cls, indexes: List['SlidesIndex']) -> 'CombinedIndex':
         cps = [index.as_combined() for index in indexes]
-        return CombinedIndex(cps)
+        ci = cls(cps)
+        return ci
 
     def save_patches(self, output_dir: Path) -> None:
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):

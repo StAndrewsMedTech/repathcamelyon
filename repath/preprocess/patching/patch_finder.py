@@ -97,7 +97,7 @@ class GridPatchFinder(PatchFinder):
 
         # 6. remove the background
         if self.remove_background:
-            df = df[df.label != 'background']  # TODO: put this in as a method that is optional on the slide patch index (or something)
+            df = df[df.label != 0]  # TODO: put this in as a method that is optional on the slide patch index (or something)
 
         # return the index and the data required to extract the patches later
         return df, self.patch_level, self.patch_size
