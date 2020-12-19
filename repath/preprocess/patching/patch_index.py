@@ -220,6 +220,7 @@ class SlidesIndex(Sequence):
         for ps in self.patches:
             # save out the csv file for this slide
             csv_path = ps.slide_path.with_suffix('.csv')
+            csv_path = output_dir / csv_path
             csv_path.parents[0].mkdir(parents=True, exist_ok=True)
             print(f"Saving {csv_path}")
             ps.patches_df.to_csv(csv_path, index=False)
