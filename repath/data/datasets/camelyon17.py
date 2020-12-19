@@ -34,7 +34,8 @@ class Camelyon17(Dataset):
     def labels(self) -> Dict[str, int]:
         return {"background": 0, "normal": 1, "tumor": 2}
 
-    def slide_label(self) -> Dict[str, int]:
+    @property
+    def slide_labels(self) -> Dict[str, int]:
         return {"negative": 0, "itc": 1,  "macro": 2, "micro": 3}
 
 def training():

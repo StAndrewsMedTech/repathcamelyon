@@ -86,49 +86,38 @@ def split_camelyon17(index: SlidesIndex, train_percent: float, seed:int = 5678) 
         slide_numbers_valid[key] = n_slides - int(n_slides * train_percent)
 
     # find annotated slides
-    annotated_slides = []
-    unannotated_slides = []
-    annotated_patients = []
-    all_patients = []
-    annotated_or_not = []
-    for idx, patchset in enumerate(index):
-        ps_tags = patchset.tags.split(',')
-        ps_tags = [tg.strip() for tg in ps_tags]
-        if 'annotated' in ps_tags:
-            annotated_slides.append(idx)
-            # get patients in annotated slides
-            annotated_patients.append(ps_tags[0])
-            annotated_or_not.append(True)
-        else:
-            unannotated_slides.append(idx)
-            annotated_or_not.append(False)
-        all_patients.append(ps_tags[0])
+    annotated_slides = [ps for ps in index if 'annotated' in ps.tags]
+    unannotated_slides = [ps for ps in index if 'annotated' not in ps.tags]
+    annotated_patients = [ps.tags[0] for ps in annotated_slides]
+    all_patients = [ps.tags[0] for ps in index]
 
-    # split patients into train and valid
-    unique_annotated_patients = np.unique(annotated_patients).tolist()
-    unique_all_patients = np.unique(all_patients).tolist()
-    unique_unannotated_patients = unique_all_patients[~unique_annotated_patients]
+    # split patients into annotated and unannotated sets
+    unique_all_patients = list(set(all_patients))
+    unique_annotated_patients = list(set(annotated_patients))
+    unique_unannotated_patients = [item for item in unique_all_patients if item not in unique_annotated_patients]
 
+    # calculate numbers of annotated and unannoted patients for train set
     n_annotated_patients = len(unique_annotated_patients)
     n_train_annotated_patients = int(train_percent * n_annotated_patients)
     n_all_patients = len(unique_all_patients)
     n_train_all_patients = int(train_percent * n_all_patients)
     n_train_unannotated = n_train_all_patients - n_train_annotated_patients
 
+    # sample annotated and unannotated training patients
     annotated_patients_train = np.random.choice(unique_annotated_patients, n_train_annotated_patients, replace=False)
     unannotated_patients_train = np.random.choice(unique_unannotated_patients, n_train_unannotated, replace=False)
+
+    # create list of training and valid patients
     train_patients = annotated_patients_train.tolist() + unannotated_patients_train.tolist()
-    valid_patients = unique_all_patients[~train_patients]
-    train_patients_mask = [True if pt in train_patients else False for pt in all_patients]
-    valid_patients_mask = [not pt for pt in train_patients_mask]
+    valid_patients = [item for item in unique_all_patients if item not in train_patients]
 
     # split slides into train and valid
-    train_index = index[valid_patients_mask]
-    valid_index = index[valid_patients_mask]
+    train_index = SlidesIndex(index.dataset, [ps for ps in index if ps.tags[0] in train_patients])
+    valid_index = SlidesIndex(index.dataset, [ps for ps in index if ps.tags[0] in valid_patients])
 
     # check split of patch classes
-    train_summaries = summaries[train_patients_mask]
-    valid_summaries = summaries[valid_patients_mask]
+    train_summaries = train_index.summary()
+    valid_summaries = valid_index.summary()
     total_tumor_patches = np.sum(summaries.tumor)
     train_tumor_patches = np.sum(train_summaries.tumor)
     valid_tumor_patches = np.sum(valid_summaries.tumor)
@@ -142,14 +131,15 @@ def split_camelyon17(index: SlidesIndex, train_percent: float, seed:int = 5678) 
     train_high = (train_percent + train_percent_5) * total_tumor_patches
     if not (train_low <= train_tumor_patches <= train_high):
         print("Warning: splitting on patients has not got a balanced split of patches")
+        print(f'training tumor patches percent: {train_tumor_patches / total_tumor_patches}')
 
     # check split of slide classes
     slide_class_split = pd.DataFrame(index=['train', 'valid', 'total'], columns=['negative', 'itc', 'micro', 'macro'])
     for col in slide_class_split.columns:
-        slide_class_split.iloc['train', col] = np.sum(train_summaries.slide_label == col)
-        slide_class_split.iloc['valid', col] = np.sum(valid_summaries.slide_label == col)
-        slide_class_split.iloc['total', col] = np.sum(summaries.slide_label == col)
-    if (np.sum(np.less(slide_class_split.tonumpy(), 1)) > 0):
+        slide_class_split.loc['train'][col] = np.sum(train_summaries.slide_label == col)
+        slide_class_split.loc['valid'][col] = np.sum(valid_summaries.slide_label == col)
+        slide_class_split.loc['total'][col] = np.sum(summaries.slide_label == col)
+    if (np.sum(np.less(slide_class_split.to_numpy(), 1)) > 0):
         print("Warning: splitting on patients has some slide classes in train or valid as zero")
 
     return train_index, valid_index
