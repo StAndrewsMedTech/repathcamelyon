@@ -78,8 +78,9 @@ def preprocess_indexes() -> None:
 
 def preprocess_samples() -> None:
     # load in the train and valid indexes
-    train = SlidesIndex.load(experiment_root / "train_index")
-    valid = SlidesIndex.load(experiment_root / "valid_index")
+    train_data = camelyon16.training()
+    train = SlidesIndex.load(train_data, experiment_root / "train_index")
+    valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
 
     # sample from train and valid sets
     train_samples = balanced_sample([train], 2000000)
