@@ -15,7 +15,7 @@ def annotation_from_tag(tag: ET.Element, group_labels: Dict[str, str]) -> Annota
     # groups Tumor, _0 and _1 are tumor annoations and group _2 are normal annoations
     # assert group in ["Tumor", "_0", "_1", "_2"], "Unknown annoation group encountered."
     # label = "tumor" if group in ["Tumor", "_0", "_1"] else "normal"
-    assert group in group_labels.keys(), "Unknown annoation group encountered."
+    assert group in group_labels.keys(), f'Unknown annoation group encountered. {group}'
     label = group_labels[group]
 
     # parse the coordinate to a list of lists with two floats

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from itertools import chain
 from pathlib import Path
 from typing import List, Sequence

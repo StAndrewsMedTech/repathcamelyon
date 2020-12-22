@@ -37,16 +37,15 @@ class PatchClassifier(pl.LightningModule):
             nn.Linear(1000, 2))
         self.model = model
 
-    def cross_entropy_loss(self, logits, labels):
-        return F.nll_loss(logits, labels)
-
     def step(self, batch, batch_idx, label):
         x, y = batch
         logits = self.model(x)
-        pred = torch.log_softmax(logits, dim=1)
-        loss = self.cross_entropy_loss(logits, y)
+
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(logits, y)
         self.log(f"{label}_loss", loss)
-        
+
+        pred = torch.log_softmax(logits, dim=1)
         correct=pred.argmax(dim=1).eq(y).sum().item()
         total=len(y)   
         accu = correct / total
@@ -64,7 +63,7 @@ class PatchClassifier(pl.LightningModule):
         optimizer = torch.optim.SGD(self.model.parameters(), 
                                     lr=0.1, 
                                     momentum=0.9, 
-                                    weight_decay=1e-4)           
+                                    weight_decay=0.0001)           
         scheduler = {
             'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1),
             'interval': 'epoch' 
@@ -75,7 +74,7 @@ class PatchClassifier(pl.LightningModule):
 Experiment step
 """
 def preprocess_indexes() -> None:
-    patch_finder = GridPatchFinder(labels_level=8, patch_level=0, patch_size=256, stride=256)
+    patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=256, stride=256)
 
     # initalise datasets
     train_data16 = camelyon16.training()
@@ -97,11 +96,15 @@ def preprocess_indexes() -> None:
 
 
 def preprocess_samples() -> None:
+    # initalise datasets
+    train_data16 = camelyon16.training()
+    train_data17 = camelyon17.training()
+
     # load in the train and valid indexes
-    train16 = SlidesIndex.load(experiment_root / "train_index16")
-    valid16 = SlidesIndex.load(experiment_root / "valid_index16")
-    train17 = SlidesIndex.load(experiment_root / "train_index17")
-    valid17 = SlidesIndex.load(experiment_root / "valid_index17")
+    train16 = SlidesIndex.load(train_data16, experiment_root / "train_index16")
+    valid16 = SlidesIndex.load(train_data16, experiment_root / "valid_index16")
+    train17 = SlidesIndex.load(train_data17, experiment_root / "train_index17")
+    valid17 = SlidesIndex.load(train_data17, experiment_root / "valid_index17")
 
     # remove non-annotated slides from camelyon17
     train17 = select_annotated(train17)
@@ -128,8 +131,8 @@ def train_patch_classifier() -> None:
     batch_size = 64
     train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=80)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=80)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -153,6 +156,6 @@ def train_patch_classifier() -> None:
 
     # train our model
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, gpus=8, accelerator="ddp", max_epochs=15, 
-                     logger=csv_logger, log_every_n_steps=1))
+    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
