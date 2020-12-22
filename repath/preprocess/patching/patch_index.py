@@ -239,7 +239,7 @@ class SlidesIndex(Sequence):
 
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'SlidesIndex':
-        def patchset_from_row(r: namedtuple) -> PatchSet:
+        def patchset_from_row(r) -> PatchSet:
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSet(int(r.slide_idx), dataset, int(r.patch_size), 
                                  int(r.level), patches_df)
