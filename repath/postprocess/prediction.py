@@ -1,10 +1,7 @@
 import numpy as np
 import torch
 
-# from repath.preprocess.patching import SlidePatchSet
-
-
-
+from repath.postprocess.slide_dataset import SlideDataset
 
 def evaluate_loop_dp(model, device, loader, num_classes):
 
@@ -12,11 +9,13 @@ def evaluate_loop_dp(model, device, loader, num_classes):
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.DataParallel(model)
 
+    model.eval()
     model.to(device)
 
     num_samples = len(loader) * loader.batch_size
 
     prob_out = np.zeros((num_samples, num_classes))
+
     with torch.no_grad():
         for idx, batch in enumerate(loader):
             data, target = batch
@@ -37,15 +36,15 @@ def evaluate_loop_dp(model, device, loader, num_classes):
 
 
 
-def inference_on_slide(slide_dataset: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
-                       batch_size: int, num_workers: int, ntransforms: int = 1) -> np.array:
+def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
+                       batch_size: int, num_workers: int, transform) -> np.array:
 
     """ runs inference for every patch on a slide using data parallel
 
     Outputs probabilities for each class
 
     Args:
-        slide_dataset: A SlideDataset object containing all non background patches for the slide
+        slideps: A SlidePatchSet object containing all non background patches for the slide
         model: a patch classifier model
         num_classes: the number of output classes predicted by the model
         batch_size: the batch size for inference
@@ -62,10 +61,15 @@ def inference_on_slide(slide_dataset: 'SlidePatchSet', model: torch.nn.Module, n
     # Check if GPU is available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    slide_dataset = SlideDataset(slideps, transform)
+
     test_loader = torch.utils.data.DataLoader(slide_dataset, shuffle=False,
                                               batch_size=batch_size,  num_workers=num_workers)
 
     probabilities = evaluate_loop_dp(model, device, test_loader, num_classes)
+
+    ### HACK - ntransforms only needed for google paper need to sort out using transform compose or list of transform compose
+    ntransforms = 1
 
     npreds = int(len(slide_dataset) * ntransforms)
 

@@ -114,7 +114,7 @@ def train_patch_classifier() -> None:
 def hard_negative_mining_and_retrain() -> None:
 
     # calculate false positives
-    cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path, model=Backbone()
     )
@@ -123,8 +123,14 @@ def hard_negative_mining_and_retrain() -> None:
     results_dir_name = "pre_hnm_results"
     heatmap_dir_name = "pre_hnm_heatmaps"
 
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
     train = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
-    train_results = SlidesIndexResults.predict_dataset(train, classifier, 128, 80, output_dir, results_dir_name,
+    train_results = SlidesIndexResults.predict_dataset(train, classifier, 128, 80, transform, output_dir, results_dir_name,
                                                        heatmap_dir_name)
     train_results.save_results_index()
 

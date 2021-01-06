@@ -27,14 +27,13 @@ class PatchClassifier(pl.LightningModule):
         super().__init__()
         self.model = googlenet(num_classes=2)
 
-    def cross_entropy_loss(self, logits, labels):
-        return F.nll_loss(logits, labels)
-
     def step(self, batch, batch_idx, label):
         x, y = batch
         logits = self.model(x)
         pred = torch.log_softmax(logits, dim=1)
-        loss = self.cross_entropy_loss(logits, y)
+
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(logits, y)
         self.log(f"{label}_loss", loss)
         
         correct=pred.argmax(dim=1).eq(y).sum().item()
@@ -106,8 +105,8 @@ def train_patch_classifier() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
     
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=80)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=80)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -119,11 +118,11 @@ def train_patch_classifier() -> None:
     )
 
     early_stop_callback = EarlyStopping(
-    monitor='val_accuracy',
-    min_delta=0.00,
-    patience=5,
-    verbose=False,
-    mode='max'
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=5,
+        verbose=False,
+        mode='max'
     )
 
     # create a logger
@@ -134,3 +133,5 @@ def train_patch_classifier() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+

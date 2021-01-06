@@ -35,7 +35,7 @@ class PatchSet(Sequence):
         return len(self.patches_df)
 
     def __getitem__(self, idx):
-        return self.patches_df.iterrows()[idx]
+        return self.patches_df.iloc[idx,]
 
     def summary(self) -> pd.DataFrame:
         by_label = self.patches_df.groupby("label").size()
@@ -258,14 +258,11 @@ class SlidePatchSetResults(SlidePatchSet):
 
     @classmethod
     def predict_slide(cls, sps: SlidePatchSet, classifier: nn.Module, batch_size: int, nworkers: int,
-                      transform_list: List = None):
-        if transform_list is None:
-            n_transforms = 1
-        else:
-            n_transforms = len(transform_list)
+                      transform):
+
         just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
         num_classes = len(just_patch_classes)
-        probs_out = inference_on_slide(sps, classifier, num_classes, batch_size, nworkers, n_transforms)
+        probs_out = inference_on_slide(sps, classifier, num_classes, batch_size, nworkers, transform)
         probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
         probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
         patchsetresults = cls(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df)
@@ -298,11 +295,11 @@ class SlidePatchSetResults(SlidePatchSet):
 
     def save_heatmap(self, class_name: str, output_dir: Path):
         # get the heatmap filename for this slide
-        img_path = output_dir / output_dir / self.slide_path.with_suffix('.png')
+        img_path = output_dir / self.slide_path.with_suffix('.png')
         # create heatmap and write out
         heatmap = self.to_heatmap(class_name)
         heatmap_out = np.array(np.multiply(heatmap, 255), dtype=np.uint8)
-        cv2.imwrite(img_path, heatmap_out)
+        cv2.imwrite(str(img_path), heatmap_out)
 
 
 class SlidesIndexResults(SlidesIndex):
@@ -319,7 +316,7 @@ class SlidesIndexResults(SlidesIndex):
                         classifier: nn.Module,
                         batch_size,
                         num_workers,
-                        transform_list,
+                        transform,
                         output_dir: Path,
                         results_dir_name: str,
                         heatmap_dir_name: str) -> 'SlidesIndexResults':
@@ -332,10 +329,16 @@ class SlidesIndexResults(SlidesIndex):
 
         spsresults = []
         for sps in si:
-            spsresult = SlidePatchSetResults.predict_slide(sps, classifier, batch_size, num_workers, transform_list)
+            spsresult = SlidePatchSetResults.predict_slide(sps, classifier, batch_size, num_workers, transform)
+            print(f"Saving {sps.slide_path}")
+            results_slide_dir = results_dir / sps.slide_path.parents[0]
+            results_slide_dir.mkdir(parents=True, exist_ok=True)
             spsresults.append(spsresult)
             spsresult.save_csv(results_dir)
-            spsresult.save_heatmap(heatmap_dir)
+            heatmap_slide_dir = heatmap_dir/ sps.slide_path.parents[0]
+            heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
+            ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
+            spsresult.save_heatmap('tumor', heatmap_dir)
 
         return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
 
