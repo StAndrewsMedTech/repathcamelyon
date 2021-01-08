@@ -89,9 +89,13 @@ def preprocess_samples() -> None:
     train_samples = balanced_sample([train], 5000000)
     valid_samples = balanced_sample([valid], 1250000)
 
+    # create list of augmentations 
+    augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
+                     FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
+
     # save out all the patches
-    train_samples.save_patches(experiment_root / "training_patches")
-    valid_samples.save_patches(experiment_root / "validation_patches")
+    train_samples.save_patches(experiment_root / "training_patches", augmentations)
+    valid_samples.save_patches(experiment_root / "validation_patches", augmentations)
 
 
 def train_patch_classifier() -> None:

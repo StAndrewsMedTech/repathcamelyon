@@ -53,11 +53,11 @@ class PatchSet(Sequence):
 
 
 class CombinedPatchSet(PatchSet):
-    def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame, transforms: List[transforms.Compose] = None) -> None:
+    def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame) -> None:
         super().__init__(dataset, patch_size, level, patches_df)
         # columns of patches_df are x, y, label, slide_idx
 
-    def save_patches(self, output_dir: Path) -> None:
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
         for slide_idx, group in self.patches_df.groupby('slide_idx'):
             slide_path, _, _, _ = self.dataset[slide_idx]
             with self.dataset.slide_cls(slide_path) as slide:
@@ -108,7 +108,7 @@ class CombinedIndex(object):
         ci = cls(cps)
         return ci
 
-    def save_patches(self, output_dir: Path) -> None:
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
@@ -118,6 +118,10 @@ class CombinedIndex(object):
                         # read the patch image from the slide
                         region = Region.patch(row.x, row.y, self.patchsizes[cps_idx], self.levels[cps_idx])
                         image = slide.read_region(region)
+
+                        # apply any transforms, as indexed in the 'transform' column
+                        if transforms:
+                            image = transforms[row.transform](image)
 
                         # get the patch label as a string
                         labels = {v: k for k, v in self.datasets[cps_idx].labels.items()}
