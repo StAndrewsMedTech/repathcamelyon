@@ -77,15 +77,20 @@ class GridPatchFinder(PatchFinder):
         # The pooling operation might be a parameter for the patch finder.
         patch_labels = pool2d(labels_image, kernel_size, label_level_stride, 0)
 
+        # convert the 2d array of patch labels to a data frame
         df = to_frame_with_locations(patch_labels, "label")
         df.row *= self.patch_size
         df.column *= self.patch_size
         df = df.rename(columns={"row": "y", "column": "x"})
         df = df.reindex(columns=["x", "y", "label"])
+
+        # for each patch, specify a transform
         df = self.apply_transforms(df)
-        # 5. for each row, add the border
-        # self.border = border
-        # TODO: Add in the border transform
+
+        # for each row, add the border
+        df['x'] = np.subtract(df['x'], self.border)
+        df['y'] = np.subtract(df['y'], self.border)
+        self.patch_size = self.patch_size + (self.border*2)
 
         if self.jitter != 0:
 
