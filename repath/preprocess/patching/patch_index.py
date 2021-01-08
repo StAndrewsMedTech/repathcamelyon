@@ -162,7 +162,7 @@ class SlidePatchSet(PatchSet):
             labels_image = annotations.render(labels_shape, scale_factor)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
-            df, level, size = patch_finder(labels_image)
+            df, level, size = patch_finder(labels_image, slide.dimensions[patch_finder.patch_level])
             patchset = cls(slide_idx, dataset, size, level, df)
             return patchset
 

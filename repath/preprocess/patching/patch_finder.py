@@ -14,7 +14,7 @@ from repath.preprocess.patching.apply_transform import ApplyTransforms, SingleTr
 
 class PatchFinder(metaclass=ABCMeta):
     @abstractmethod
-    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
+    def __call__(self, labels_image: np.array, slide_shape: Size) -> Tuple[pd.DataFrame, int, int]:
         raise NotImplementedError
 
     @property
