@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from repath.utils.geometry import Size
 from typing import Dict, Tuple
 from random import randint
 
@@ -60,7 +61,7 @@ class GridPatchFinder(PatchFinder):
         # 2. patch_level is equal to or below labels_level
         # 3. stride is some integer multiple of a pixel at labels_level
 
-    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
+    def __call__(self, labels_image: np.array, slide_shape: Size) -> Tuple[pd.DataFrame, int, int]:
         """Patch finders can be called with an array of rendered annotations and produce a patch index.
 
         Args:
@@ -101,9 +102,15 @@ class GridPatchFinder(PatchFinder):
             df["x"] = df["x"].apply(jitter)
             df["y"] = df["y"].apply(jitter)
 
-        # 6. remove the background
+        # remove the background
         if self.remove_background:
             df = df[df.label != 0]  # TODO: put this in as a method that is optional on the slide patch index (or something)
+
+        # clip the patch coordinates to the slide dimensions
+        df['x'] = np.maximum(df['x'], 0)
+        df['y'] = np.maximum(df['y'], 0)
+        df['x'] = np.minimum(df['x'], slide_shape.width - self.patch_size)
+        df['y'] = np.minimum(df['y'], slide_shape.height - self.patch_size)
 
         # return the index and the data required to extract the patches later
         return df, self.patch_level, self.patch_size
