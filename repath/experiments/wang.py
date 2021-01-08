@@ -3,6 +3,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import loggers as pl_loggers
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
@@ -13,7 +14,7 @@ import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample
-from torchvision.models import googlenet
+from torchvision.models import GoogLeNet
 
 """
 Global stuff
@@ -25,29 +26,41 @@ tissue_detector = TissueDetectorOTSU()
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
-        self.model = googlenet(num_classes=2)
+        self.model = GoogLeNet(num_classes=2)
 
-    def step(self, batch, batch_idx, label):
+    def training_step(self, batch, batch_idx):
         x, y = batch
-        logits = self.model(x)
-        pred = torch.log_softmax(logits, dim=1)
+        output, aux2, aux1 = self.model(x)
+        pred = torch.log_softmax(output, dim=1)
 
         criterion = nn.CrossEntropyLoss()
-        loss = criterion(logits, y)
-        self.log(f"{label}_loss", loss)
+        loss1 = criterion(output, y)
+        loss2 = criterion(aux1, y)
+        loss3 = criterion(aux2, y)
+        loss = loss1 + 0.3 * loss2 + 0.3 * loss3
+        self.log("train_loss", loss)
         
         correct=pred.argmax(dim=1).eq(y).sum().item()
         total=len(y)   
         accu = correct / total
-        self.log(f"{label}_accuracy", accu)
-        
+        self.log("train_accuracy", accu)
+
         return loss
 
-    def training_step(self, batch, batch_idx):
-        return self.step(batch, batch_idx, "train")
-
     def validation_step(self, batch, batch_idx):
-        return self.step(batch, batch_idx, "val")
+        x, y = batch
+        output = self.model(x)
+        pred = torch.log_softmax(output, dim=1)
+
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(output, y)
+        self.log("val_loss", loss)
+        
+        correct=pred.argmax(dim=1).eq(y).sum().item()
+        total=len(y)   
+        accu = correct / total
+        self.log("val_accuracy", accu)
+        return loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(), 
