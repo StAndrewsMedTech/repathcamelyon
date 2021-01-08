@@ -69,7 +69,7 @@ Experiment step
 def preprocess_indexes() -> None:
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
-    apply_transforms = SingleTransform()
+    apply_transforms = LiuTransform(label=2, num_transforms=8)
     patch_finder = GridPatchFinder(labels_level=7, patch_level=0, patch_size=128, stride=128, apply_transforms)
     train_patches = SlidesIndex.index_dataset(train_data, tissue_detector, patch_finder)
 
