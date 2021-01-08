@@ -53,7 +53,7 @@ class PatchSet(Sequence):
 
 
 class CombinedPatchSet(PatchSet):
-    def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame) -> None:
+    def __init__(self, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame, transforms: List[transforms.Compose] = None) -> None:
         super().__init__(dataset, patch_size, level, patches_df)
         # columns of patches_df are x, y, label, slide_idx
 
@@ -66,6 +66,10 @@ class CombinedPatchSet(PatchSet):
                     # read the patch image from the slide
                     region = Region.patch(row.x, row.y, self.patch_size, self.level)
                     image = slide.read_region(region)
+
+                    # apply any transforms, as indexed in the 'transform' column
+                    if transforms:
+                        image = transforms[row.transform](image)
 
                     # get the patch label as a string
                     labels = {v: k for k, v in self.dataset.labels.items()}
