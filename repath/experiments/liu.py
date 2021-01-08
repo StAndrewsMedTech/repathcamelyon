@@ -13,19 +13,19 @@ import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample
-from torchvision.models import googlenet
+from torchvision.models import Inception3
 
 """
 Global stuff
 """
-experiment_name = "wang"
+experiment_name = "liu"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorOTSU()
 
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
-        self.model = googlenet(num_classes=2)
+        self.model = Inception3(num_classes=2)
 
     def step(self, batch, batch_idx, label):
         x, y = batch
@@ -50,12 +50,15 @@ class PatchClassifier(pl.LightningModule):
         return self.step(batch, batch_idx, "val")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.model.parameters(), 
-                                    lr=0.01, 
+        optimizer = torch.optim.RMSProp(self.model.parameters(), 
+                                    lr=0.05, 
                                     momentum=0.9, 
-                                    weight_decay=0.0005)
+                                    weight_decay=0.0,
+                                    alpha=0.9,
+                                    eps= 1.0,
+                                    centered= False)
         scheduler = {
-            'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.5),
+            'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=62500, gamma=0.5),
             'interval': 'step' 
         }
         return [optimizer], [scheduler]
@@ -66,7 +69,8 @@ Experiment step
 def preprocess_indexes() -> None:
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
-    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=32)
+    apply_transforms = SingleTransform()
+    patch_finder = GridPatchFinder(labels_level=7, patch_level=0, patch_size=128, stride=128, apply_transforms)
     train_patches = SlidesIndex.index_dataset(train_data, tissue_detector, patch_finder)
 
     # do the train validate split
@@ -82,8 +86,8 @@ def preprocess_samples() -> None:
     valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
 
     # sample from train and valid sets
-    train_samples = balanced_sample([train], 2000000)
-    valid_samples = balanced_sample([valid], 500000)
+    train_samples = balanced_sample([train], 5000000)
+    valid_samples = balanced_sample([valid], 1250000)
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")

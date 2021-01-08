@@ -9,7 +9,7 @@ import pandas as pd
 
 from repath.utils.convert import to_frame_with_locations
 from repath.utils.filters import pool2d
-
+from repath.preprocess.patching.apply_transform import ApplyTransforms, SingleTransform
 
 class PatchFinder(metaclass=ABCMeta):
     @abstractmethod
@@ -32,7 +32,7 @@ class GridPatchFinder(PatchFinder):
         border: int = 0,
         jitter: int = 0,
         remove_background: bool = True,
-        apply_transforms: ApplyTransforms
+        apply_transforms: ApplyTransforms = SingleTransform()
     ) -> None:
         """ Note that the assumption is that the same settings will be used for a number of different patches.
 
@@ -82,7 +82,7 @@ class GridPatchFinder(PatchFinder):
         df.column *= self.patch_size
         df = df.rename(columns={"row": "y", "column": "x"})
         df = df.reindex(columns=["x", "y", "label"])
-        df = apply_transforms(df)
+        df = self.apply_transforms(df)
         # 5. for each row, add the border
         # self.border = border
         # TODO: Add in the border transform
