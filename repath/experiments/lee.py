@@ -203,12 +203,13 @@ def create_hnm_patches() -> None:
 
     train_results = CombinedIndex.for_slide_indexes([train_results16, train_results17])
 
+    FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5, train_results.patches_df['label'] == 1)
 
-    train_results = train_results.as_combined()
+    hnm_patches_df = train_results.patches_df[FP_mask]
+    hnm_patches_df = hnm_patches_df.sort_values('tumor', axis=0, ascending=False)
+    ### limit number of patches to same number as original patches
+    hnm_patches_df = hnm_patches_df.iloc[0:47574]
 
-    patch_dict = train_results.dataset.labels
-    FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5,
-                             train_results.patches_df['label'] == patch_dict['normal'])
-    train_results.patches_df = train_results.patches_df[FP_mask]
-    ### To do put in a limit on how many patches to add
-    #train_results.save_patches(experiment_root / "training_patches")
+    train_results.patches_df = hnm_patches_df
+
+    train_results.save_patches(experiment_root / "training_patches", affix='-hnm')
