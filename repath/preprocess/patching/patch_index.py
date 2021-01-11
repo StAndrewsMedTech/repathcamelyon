@@ -124,7 +124,7 @@ class CombinedIndex(object):
 
                         # apply any transforms, as indexed in the 'transform' column
                         if transforms:
-                            image = transforms[row.transform](image)
+                            image = transforms[row.transform-1](image)  # TODO: row.transforms should be 0 indexed by is 1 indexed
 
                         # get the patch label as a string
                         labels = {v: k for k, v in self.datasets[cps_idx].labels.items()}
