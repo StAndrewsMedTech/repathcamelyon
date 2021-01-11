@@ -362,6 +362,7 @@ class SlidesIndexResults(SlidesIndex):
             heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
             ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
             spsresult.save_heatmap('tumor', heatmap_dir)
+            spsresults.append(spsresult)
 
         return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
 
