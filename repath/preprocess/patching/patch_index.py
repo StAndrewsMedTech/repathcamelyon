@@ -397,7 +397,7 @@ class SlidesIndexResults(SlidesIndex):
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
 
-    
+    """
     @classmethod
     def predict_dataset_threaded(cls,
                         si: SlidesIndex,
@@ -461,3 +461,4 @@ class SlidesIndexResults(SlidesIndex):
 
 
         return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
+    """

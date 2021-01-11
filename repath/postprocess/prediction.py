@@ -34,7 +34,7 @@ def evaluate_loop_dp(model, device, loader, num_classes):
 
     return prob_out
 
-
+"""
 def evaluate_loop_threaded(model, device, loader, num_classes, device):
 
     model.eval()
@@ -61,7 +61,7 @@ def evaluate_loop_threaded(model, device, loader, num_classes, device):
                 print('Batch {} of {}'.format(idx, len(loader)))
 
     return prob_out
-
+"""
 
 
 def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
@@ -116,7 +116,7 @@ def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_cla
 
     return probabilities
 
-
+'''
 def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
                        batch_size: int, num_workers: int, transform, device) -> np.array:
 
@@ -189,3 +189,4 @@ def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module
 #def distibuted_predict(model, patchset):
 #    dataset = SlideDataset(patchset)
 #    sampler = SequentialSampler(dataset)
+'''

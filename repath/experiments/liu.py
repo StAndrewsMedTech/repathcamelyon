@@ -1,3 +1,4 @@
+from repath.preprocess.patching.apply_transform import LiuTransform
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -7,13 +8,15 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize
+from torchvision.models import Inception3
 
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample
-from torchvision.models import Inception3
+from repath.preprocess.augmentation.augments import Rotate, FlipRotate
+
 
 """
 Global stuff
@@ -70,7 +73,7 @@ def preprocess_indexes() -> None:
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
     apply_transforms = LiuTransform(label=2, num_transforms=8)
-    patch_finder = GridPatchFinder(labels_level=7, patch_level=0, patch_size=128, stride=128, apply_transforms)
+    patch_finder = GridPatchFinder(labels_level=7, patch_level=0, patch_size=128, stride=128, apply_transforms=apply_transforms)
     train_patches = SlidesIndex.index_dataset(train_data, tissue_detector, patch_finder)
 
     # do the train validate split

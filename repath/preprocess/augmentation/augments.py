@@ -11,7 +11,7 @@ class Rotate(object):
 
 class FlipRotate(object):
     """ Create a flip and rotate class """
-        def __init__(self, angle):
+    def __init__(self, angle):
         self.angle = angle
 
     def __call__(self, img):
