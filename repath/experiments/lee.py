@@ -189,3 +189,27 @@ def inference_on_train() -> None:
     train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, 128, 8, transform, output_dir17, results_dir_name, heatmap_dir_name)
     train_results17.save_results_index()
 
+
+def create_hnm_patches() -> None:
+
+    input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
+    input_dir17 = experiment_root / "train_index17" / "pre_hnm_results"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train_results16 = SlidesIndexResults.load_results_index(camelyon16.training(), input_dir16, results_dir_name, heatmap_dir_name)
+    train_results17 = SlidesIndexResults.load_results_index(camelyon17.training(), input_dir17, results_dir_name, heatmap_dir_name)
+
+    train_results = CombinedIndex.for_slide_indexes([train_results16, train_results17])
+
+    FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5, train_results.patches_df['label'] == 1)
+
+    hnm_patches_df = train_results.patches_df[FP_mask]
+    hnm_patches_df = hnm_patches_df.sort_values('tumor', axis=0, ascending=False)
+    ### limit number of patches to same number as original patches
+    hnm_patches_df = hnm_patches_df.iloc[0:47574]
+
+    train_results.patches_df = hnm_patches_df
+
+    train_results.save_patches(experiment_root / "training_patches", affix='-hnm')

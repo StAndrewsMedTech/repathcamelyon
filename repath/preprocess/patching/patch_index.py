@@ -111,7 +111,7 @@ class CombinedIndex(object):
         ci = cls(cps)
         return ci
 
-    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '') -> None:
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
@@ -137,7 +137,7 @@ class CombinedIndex(object):
                         # write out the slide
                         rel_slide_path = self.datasets[cps_idx].to_rel_path(slide_path)
                         slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
-                        patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
+                        patch_filename = slide_name_str + f"-{row.x}-{row.y}{affix}.png"
                         image_path = output_dir / label / patch_filename
                         image.save(image_path)
 
