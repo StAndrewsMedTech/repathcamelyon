@@ -12,7 +12,7 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
-from repath.preprocess.patching import GridPatchFinder, SlidesIndex
+from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
 from repath.preprocess.sampling import split_camelyon16, balanced_sample
 from torchvision.models import GoogLeNet
 
@@ -152,12 +152,12 @@ def inference_on_train() -> None:
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
+    output_dir16 = experiment_root / "train_index" / "pre_hnm_results"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
 
     transform = Compose([
         RandomCrop((240, 240)),
