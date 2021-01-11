@@ -1,12 +1,15 @@
 from collections import namedtuple
 from itertools import chain
 from pathlib import Path
+import threading
 from typing import List, Sequence
 
 import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
+from sklearn.utils import shuffle
+import torch
 from torch import nn
 from torchvision import transforms
 
@@ -309,6 +312,18 @@ class SlidePatchSetResults(SlidePatchSet):
         heatmap_out = np.array(np.multiply(heatmap, 255), dtype=np.uint8)
         cv2.imwrite(str(img_path), heatmap_out)
 
+    @classmethod
+    def predict_slide_threaded(cls, sps: SlidePatchSet, classifier: nn.Module, batch_size: int, nworkers: int,
+                      transform, device: int):
+
+        just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
+        num_classes = len(just_patch_classes)
+        probs_out = inference_on_slide_threaded(sps, classifier, num_classes, batch_size, nworkers, transform, device)
+        probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
+        probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
+        patchsetresults = cls(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df)
+        return patchsetresults
+
 
 class SlidesIndexResults(SlidesIndex):
     def __init__(self, dataset: Dataset, patches: List[SlidePatchSet],
@@ -380,3 +395,68 @@ class SlidesIndexResults(SlidesIndex):
         patches = [patchset_from_row(r) for r in index.itertuples()]
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
+
+    
+    @classmethod
+    def predict_dataset_threaded(cls,
+                        si: SlidesIndex,
+                        classifier: nn.Module,
+                        batch_size,
+                        num_workers,
+                        transform,
+                        output_dir: Path,
+                        results_dir_name: str,
+                        heatmap_dir_name: str) -> 'SlidesIndexResults':
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        results_dir = output_dir / results_dir_name
+        results_dir.mkdir(parents=True, exist_ok=True)
+        heatmap_dir = output_dir / heatmap_dir_name
+        heatmap_dir.mkdir(parents=True, exist_ok=True)
+
+        ### experiment to distribute slides across multigpus for inference
+        # find how many gpus
+        ngpus = torch.cuda.device_count()
+
+        # work out how many slides and numbers in each split
+        nslides = len(si)
+        splits = np.linspace(0, nslides, num=(ngpus+1))
+        start_indexes = splits[0:ngpus]
+        end_indexes = splits[1:]
+
+        # shuffle slide index
+        si = shuffle(si)
+        si_per_gpu = []
+        for ii in ngpus:
+            si_gpu = si[start_indexes[ii]:end_indexes[ii]]
+            si_per_gpu.append(si_gpu)
+
+        def worker(num):
+            si_thread = si_per_gpu[num]
+            spsresults_thread = []
+            for sps in si_thread:
+                spsresult = SlidePatchSetResults.predict_slide_threaded(sps, classifier, batch_size, num_workers, transform, num)
+                print(f"Saving {sps.slide_path}")
+                results_slide_dir = results_dir / sps.slide_path.parents[0]
+                results_slide_dir.mkdir(parents=True, exist_ok=True)
+                spsresults.append(spsresult)
+                spsresult.save_csv(results_dir)
+                heatmap_slide_dir = heatmap_dir/ sps.slide_path.parents[0]
+                heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
+                ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
+                spsresult.save_heatmap('tumor', heatmap_dir)
+                spsresults_thread.append(spsresult)           
+            spsresults[num] = spsresults_thread
+            return 
+
+        spsresults = [0] * ngpus
+        threads = []
+        for i in range(ngpus):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+
+        spsresults_flat = [item for sublist in spsresults for item in sublist]
+
+
+        return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
