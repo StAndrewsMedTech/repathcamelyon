@@ -188,4 +188,3 @@ def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module
 #def distibuted_predict(model, patchset):
 #    dataset = SlideDataset(patchset)
 #    sampler = SequentialSampler(dataset)
-'''
