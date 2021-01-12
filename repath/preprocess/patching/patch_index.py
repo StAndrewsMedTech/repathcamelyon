@@ -396,7 +396,7 @@ class SlidesIndexResults(SlidesIndex):
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
 
-    """
+ 
     @classmethod
     def predict_dataset_threaded(cls,
                         si: SlidesIndex,
@@ -420,14 +420,16 @@ class SlidesIndexResults(SlidesIndex):
 
         # work out how many slides and numbers in each split
         nslides = len(si)
-        splits = np.linspace(0, nslides, num=(ngpus+1))
+        splits = np.rint(np.linspace(0, nslides, num=(ngpus+1))).astype(int)
         start_indexes = splits[0:ngpus]
         end_indexes = splits[1:]
+        print("splits:", splits)
 
         # shuffle slide index
         si = shuffle(si)
         si_per_gpu = []
-        for ii in ngpus:
+        for ii in range(ngpus):
+            print(start_indexes[ii], end_indexes[ii])
             si_gpu = si[start_indexes[ii]:end_indexes[ii]]
             si_per_gpu.append(si_gpu)
 
@@ -436,16 +438,15 @@ class SlidesIndexResults(SlidesIndex):
             spsresults_thread = []
             for sps in si_thread:
                 spsresult = SlidePatchSetResults.predict_slide_threaded(sps, classifier, batch_size, num_workers, transform, num)
-                print(f"Saving {sps.slide_path}")
+                print(f"Saving {num}: {sps.slide_path}")
                 results_slide_dir = results_dir / sps.slide_path.parents[0]
                 results_slide_dir.mkdir(parents=True, exist_ok=True)
-                spsresults.append(spsresult)
+                spsresults_thread.append(spsresult)
                 spsresult.save_csv(results_dir)
                 heatmap_slide_dir = heatmap_dir/ sps.slide_path.parents[0]
                 heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
                 ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
-                spsresult.save_heatmap('tumor', heatmap_dir)
-                spsresults_thread.append(spsresult)           
+                spsresult.save_heatmap('tumor', heatmap_dir)         
             spsresults[num] = spsresults_thread
             return 
 
@@ -455,9 +456,9 @@ class SlidesIndexResults(SlidesIndex):
             t = threading.Thread(target=worker, args=(i,))
             threads.append(t)
             t.start()
+            t.join()
 
         spsresults_flat = [item for sublist in spsresults for item in sublist]
 
-
         return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
-    """
+    

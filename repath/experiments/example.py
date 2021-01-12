@@ -111,17 +111,18 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
-def hard_negative_mining_and_retrain() -> None:
-
-    # calculate false positives
+def inference_on_train() -> None:
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    classifier = PatchClassifier.load_from_checkpoint(
-        checkpoint_path=cp_path, model=Backbone()
-    )
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir = experiment_root / "train_index"
-    results_dir_name = "pre_hnm_results"
-    heatmap_dir_name = "pre_hnm_heatmaps"
+    output_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
+    output_dir17 = experiment_root / "train_index17" / "pre_hnm_results"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
+    train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
 
     transform = Compose([
         RandomCrop((240, 240)),
@@ -129,42 +130,36 @@ def hard_negative_mining_and_retrain() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    train = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
-    train_results = SlidesIndexResults.predict_dataset(train, classifier, 128, 80, transform, output_dir, results_dir_name,
-                                                       heatmap_dir_name)
-    train_results.save_results_index()
+    train_results16 = SlidesIndexResults.predict_dataset(train16, classifier, 128, 8, transform, output_dir16, results_dir_name, heatmap_dir_name)
+    train_results16.save_results_index()
 
-    train_results = train_results.as_combined()
+    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, 128, 8, transform, output_dir17, results_dir_name, heatmap_dir_name)
+    train_results17.save_results_index()
 
-    patch_dict = train_results.dataset.labels
-    FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5,
-                             train_results.patches_df['label'] == patch_dict['tumor'])
-    train_results.patches_df = train_results.patches_df[FP_mask]
-    ### To do put in a limit on how many patches to add
-    train_results.save_patches(experiment_root / "training_patches")
 
-    # prepare our data
-    batch_size = 128
-    train_set = ImageFolder.load(experiment_root / "training_patches")
-    valid_set = ImageFolder.load(experiment_root / "validation_patches")
-    train_loader = DataLoader(train_set, batch_size=batch_size)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size)
+def create_hnm_patches() -> None:
 
-    # configure logging and checkpoints
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        dirpath=experiment_root / "patch_model_hnm",
-        filename=f"checkpoint-{epoch:02d}-{val_loss:.2f}.ckpt",
-        save_top_k=1,
-        mode="min",
-    )
+    input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
+    input_dir17 = experiment_root / "train_index17" / "pre_hnm_results"
 
-    # train our model
-    cp_path = (experiment_root / "patch_model").glob("*.ckpt")[0]
-    model = Backbone().load_from_checkpoint(cp_path)
-    classifier = PatchClassifier(model)
-    trainer = pl.Trainer(callbacks=[checkpoint_callback])
-    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train_results16 = SlidesIndexResults.load_results_index(camelyon16.training(), input_dir16, results_dir_name, heatmap_dir_name)
+    train_results17 = SlidesIndexResults.load_results_index(camelyon17.training(), input_dir17, results_dir_name, heatmap_dir_name)
+
+    train_results = CombinedIndex.for_slide_indexes([train_results16, train_results17])
+
+    FP_mask = np.logical_and(train_results.patches_df['tumor'] > 0.5, train_results.patches_df['label'] == 1)
+
+    hnm_patches_df = train_results.patches_df[FP_mask]
+    hnm_patches_df = hnm_patches_df.sort_values('tumor', axis=0, ascending=False)
+    ### limit number of patches to same number as original patches
+    hnm_patches_df = hnm_patches_df.iloc[0:47574]
+
+    train_results.patches_df = hnm_patches_df
+
+    train_results.save_patches(experiment_root / "training_patches", affix='-hnm')
 
 
 def preprocess_for_testing() -> None:

@@ -213,3 +213,46 @@ def create_hnm_patches() -> None:
     train_results.patches_df = hnm_patches_df
 
     train_results.save_patches(experiment_root / "training_patches", affix='-hnm')
+
+
+def retrain_patch_classifier_hnm() -> None:
+    # transforms
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # prepare our data
+    batch_size = 64
+    train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8)
+
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_accuracy",
+        dirpath=experiment_root / "patch_model_hnm",
+        filename=f"checkpoint.ckpt",
+        save_top_k=1,
+        mode="max",
+    )
+
+    early_stop_callback = EarlyStopping(
+    monitor='val_accuracy',
+    min_delta=0.00,
+    patience=5,
+    verbose=False,
+    mode='max'
+    )
+
+    # create a logger
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
+
+    # train our model
+    classifier = PatchClassifier()
+    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, log_every_n_steps=1)
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+

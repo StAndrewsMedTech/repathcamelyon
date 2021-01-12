@@ -34,8 +34,8 @@ def evaluate_loop_dp(model, device, loader, num_classes):
 
     return prob_out
 
-"""
-def evaluate_loop_threaded(model, device, loader, num_classes, device):
+
+def evaluate_loop_threaded(model, device, loader, num_classes):
 
     model.eval()
     model.to(device)
@@ -61,7 +61,6 @@ def evaluate_loop_threaded(model, device, loader, num_classes, device):
                 print('Batch {} of {}'.format(idx, len(loader)))
 
     return prob_out
-"""
 
 
 def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
@@ -116,7 +115,7 @@ def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_cla
 
     return probabilities
 
-'''
+
 def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
                        batch_size: int, num_workers: int, transform, device) -> np.array:
 
@@ -140,14 +139,14 @@ def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module
     """
 
     # Check if GPU is available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{device}" if torch.cuda.is_available() else "cpu")
 
     slide_dataset = SlideDataset(slideps, transform)
 
     test_loader = torch.utils.data.DataLoader(slide_dataset, shuffle=False,
                                               batch_size=batch_size,  num_workers=num_workers)
 
-    probabilities = evaluate_loop_threaded(model, device, test_loader, num_classes, device)
+    probabilities = evaluate_loop_threaded(model, device, test_loader, num_classes)
 
     ### HACK - ntransforms only needed for google paper need to sort out using transform compose or list of transform compose
     ntransforms = 1
