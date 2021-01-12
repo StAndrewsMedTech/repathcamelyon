@@ -73,6 +73,9 @@ class PatchClassifier(pl.LightningModule):
         }
         return [optimizer], [scheduler]
 
+    def forward(self, x):
+        return self.model(x)
+
 """
 Experiment step
 """
@@ -115,7 +118,7 @@ def train_patch_classifier() -> None:
     # prepare our data
     batch_size = 32
     train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
-    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)   
     
     # create dataloaders
     train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
@@ -160,7 +163,8 @@ def inference_on_train() -> None:
     train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
 
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomRotation((0, 360)),
+        RandomCrop((224, 224)),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])

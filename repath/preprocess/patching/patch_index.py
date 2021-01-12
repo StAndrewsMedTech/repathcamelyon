@@ -18,7 +18,7 @@ from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.data.slides import Region
 from repath.utils.convert import remove_item_from_dict
-from repath.postprocess.prediction import inference_on_slide
+from repath.postprocess.prediction import inference_on_slide, inference_on_slide_threaded
 
 
 class PatchSet(Sequence):
@@ -423,13 +423,11 @@ class SlidesIndexResults(SlidesIndex):
         splits = np.rint(np.linspace(0, nslides, num=(ngpus+1))).astype(int)
         start_indexes = splits[0:ngpus]
         end_indexes = splits[1:]
-        print("splits:", splits)
 
         # shuffle slide index
         si = shuffle(si)
         si_per_gpu = []
         for ii in range(ngpus):
-            print(start_indexes[ii], end_indexes[ii])
             si_gpu = si[start_indexes[ii]:end_indexes[ii]]
             si_per_gpu.append(si_gpu)
 
