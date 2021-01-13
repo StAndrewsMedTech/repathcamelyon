@@ -88,7 +88,7 @@ docker_image:
 	docker build -t $(PROJECT_NAME) .
 
 docker_run:
-	docker run --shm-size=8G \
+	docker run --shm-size=16G \
 				--gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) \
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
 				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \

@@ -3,6 +3,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import loggers as pl_loggers
 import torch
+import random
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -16,7 +18,7 @@ import repath.data.datasets.camelyon17 as camelyon17
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, select_annotated
-
+from repath.utils.seeds import set_seed
 """
 Global stuff
 """
@@ -24,9 +26,11 @@ experiment_name = "lee"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorGreyScale()
 
+global_seed = 123
 """
 
 """
+
 
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
@@ -46,11 +50,11 @@ class PatchClassifier(pl.LightningModule):
         self.log(f"{label}_loss", loss)
 
         pred = torch.log_softmax(logits, dim=1)
-        correct=pred.argmax(dim=1).eq(y).sum().item()
-        total=len(y)   
+        correct = pred.argmax(dim=1).eq(y).sum().item()
+        total = len(y)
         accu = correct / total
         self.log(f"{label}_accuracy", accu)
-        
+
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -60,23 +64,27 @@ class PatchClassifier(pl.LightningModule):
         return self.step(batch, batch_idx, "val")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.model.parameters(), 
-                                    lr=0.1, 
-                                    momentum=0.9, 
-                                    weight_decay=0.0001)           
+        optimizer = torch.optim.SGD(self.model.parameters(),
+                                    lr=0.1,
+                                    momentum=0.9,
+                                    weight_decay=0.0001)
         scheduler = {
             'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1),
-            'interval': 'epoch' 
+            'interval': 'epoch'
         }
         return [optimizer], [scheduler]
 
     def forward(self, x):
         return self.model(x)
 
+
 """
 Experiment step
 """
+
+
 def preprocess_indexes() -> None:
+    set_seed(global_seed)
     patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=256, stride=256)
 
     # initalise datasets
@@ -99,6 +107,7 @@ def preprocess_indexes() -> None:
 
 
 def preprocess_samples() -> None:
+    set_seed(global_seed)
     # initalise datasets
     train_data16 = camelyon16.training()
     train_data17 = camelyon17.training()
@@ -123,6 +132,7 @@ def preprocess_samples() -> None:
 
 
 def train_patch_classifier() -> None:
+    set_seed(global_seed)
     # transforms
     transform = Compose([
         RandomCrop((240, 240)),
@@ -134,8 +144,8 @@ def train_patch_classifier() -> None:
     batch_size = 64
     train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -147,11 +157,11 @@ def train_patch_classifier() -> None:
     )
 
     early_stop_callback = EarlyStopping(
-    monitor='val_accuracy',
-    min_delta=0.00,
-    patience=5,
-    verbose=False,
-    mode='max'
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=5,
+        verbose=False,
+        mode='max'
     )
 
     # create a logger
@@ -159,12 +169,13 @@ def train_patch_classifier() -> None:
 
     # train our model
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15, 
-                     logger=csv_logger, log_every_n_steps=1)
+    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
+                         logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
 def inference_on_train() -> None:
+    set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
@@ -183,23 +194,27 @@ def inference_on_train() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    train_results16 = SlidesIndexResults.predict_dataset(train16, classifier, 128, 8, transform, output_dir16, results_dir_name, heatmap_dir_name)
+    train_results16 = SlidesIndexResults.predict_dataset(train16, classifier, 128, 8, transform, output_dir16,
+                                                         results_dir_name, heatmap_dir_name)
     train_results16.save_results_index()
 
-    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, 128, 8, transform, output_dir17, results_dir_name, heatmap_dir_name)
+    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, 128, 8, transform, output_dir17,
+                                                         results_dir_name, heatmap_dir_name)
     train_results17.save_results_index()
 
 
 def create_hnm_patches() -> None:
-
+    set_seed(global_seed)
     input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
     input_dir17 = experiment_root / "train_index17" / "pre_hnm_results"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    train_results16 = SlidesIndexResults.load_results_index(camelyon16.training(), input_dir16, results_dir_name, heatmap_dir_name)
-    train_results17 = SlidesIndexResults.load_results_index(camelyon17.training(), input_dir17, results_dir_name, heatmap_dir_name)
+    train_results16 = SlidesIndexResults.load_results_index(camelyon16.training(), input_dir16, results_dir_name,
+                                                            heatmap_dir_name)
+    train_results17 = SlidesIndexResults.load_results_index(camelyon17.training(), input_dir17, results_dir_name,
+                                                            heatmap_dir_name)
 
     train_results = CombinedIndex.for_slide_indexes([train_results16, train_results17])
 
@@ -213,3 +228,46 @@ def create_hnm_patches() -> None:
     train_results.patches_df = hnm_patches_df
 
     train_results.save_patches(experiment_root / "training_patches", affix='-hnm')
+
+
+def retrain_patch_classifier_hnm() -> None:
+    set_seed(global_seed)
+    # transforms
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # prepare our data
+    batch_size = 64
+    train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
+
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_accuracy",
+        dirpath=experiment_root / "patch_model_hnm",
+        filename=f"checkpoint.ckpt",
+        save_top_k=1,
+        mode="max",
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=5,
+        verbose=False,
+        mode='max'
+    )
+
+    # create a logger
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
+
+    # train our model
+    classifier = PatchClassifier()
+    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
+                         logger=csv_logger, log_every_n_steps=1)
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
