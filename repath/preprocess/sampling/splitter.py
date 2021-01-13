@@ -143,3 +143,8 @@ def split_camelyon17(index: SlidesIndex, train_percent: float, seed:int = 5678) 
         print("Warning: splitting on patients has some slide classes in train or valid as zero")
 
     return train_index, valid_index
+
+
+def select_annotated(index: SlidesIndex) -> SlidesIndex:
+    annotated = [ps for ps in index if 'annotated' in ps.tags]
+    return SlidesIndex(index.dataset, annotated
