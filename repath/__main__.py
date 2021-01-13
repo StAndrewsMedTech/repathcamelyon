@@ -3,6 +3,8 @@
 from click import group, version_option, command, argument
 
 import repath.experiments.wang as wang
+import repath.experiments.lee as lee
+import repath.experiments.liu as liu
 
 @group()
 @version_option("1.0.0")

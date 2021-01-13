@@ -1,11 +1,15 @@
+from collections import namedtuple
 from itertools import chain
 from pathlib import Path
+import threading
 from typing import List, Sequence
 
 import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
+from sklearn.utils import shuffle
+import torch
 from torch import nn
 from torchvision import transforms
 
@@ -14,7 +18,7 @@ from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.data.slides import Region
 from repath.utils.convert import remove_item_from_dict
-from repath.postprocess.prediction import inference_on_slide
+from repath.postprocess.prediction import inference_on_slide, inference_on_slide_threaded
 
 
 class PatchSet(Sequence):
@@ -34,7 +38,7 @@ class PatchSet(Sequence):
         return len(self.patches_df)
 
     def __getitem__(self, idx):
-        return self.patches_df.iterrows()[idx]
+        return self.patches_df.iloc[idx,]
 
     def summary(self) -> pd.DataFrame:
         by_label = self.patches_df.groupby("label").size()
@@ -56,7 +60,7 @@ class CombinedPatchSet(PatchSet):
         super().__init__(dataset, patch_size, level, patches_df)
         # columns of patches_df are x, y, label, slide_idx
 
-    def save_patches(self, output_dir: Path) -> None:
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
         for slide_idx, group in self.patches_df.groupby('slide_idx'):
             slide_path, _, _, _ = self.dataset[slide_idx]
             with self.dataset.slide_cls(slide_path) as slide:
@@ -65,6 +69,10 @@ class CombinedPatchSet(PatchSet):
                     # read the patch image from the slide
                     region = Region.patch(row.x, row.y, self.patch_size, self.level)
                     image = slide.read_region(region)
+
+                    # apply any transforms, as indexed in the 'transform' column
+                    if transforms:
+                        image = transforms[row.transform](image)
 
                     # get the patch label as a string
                     labels = {v: k for k, v in self.dataset.labels.items()}
@@ -82,20 +90,28 @@ class CombinedPatchSet(PatchSet):
                     image.save(image_path)
 
 
-class CombinedIndex(Sequence):
+class CombinedIndex(object):
     def __init__(self, cps: List[CombinedPatchSet]) -> None:
         self.datasets = [cp.dataset for cp in cps]
         self.patchsizes = [cp.patch_size for cp in cps]
         self.levels = [cp.level for cp in cps]
         patches_dfs = [cp.patches_df for cp in cps]
         patches_df = pd.concat(patches_dfs, axis=0)
-        cps_index = []
-        for idx, cp in enumerate(cps):
-            cps_index.extend([len(cps)] * idx)
+        cps_index = [[idx] * len(cp) for idx, cp in enumerate(cps)]
+        cps_index = [item for sublist in cps_index for item in sublist]
         patches_df['cps_idx'] = cps_index
         self.patches_df = patches_df
 
-    def save_patches(self, output_dir: Path) -> None:
+    def __len__(self):
+        return len(self.patches_df)
+
+    @classmethod
+    def for_slide_indexes(cls, indexes: List['SlidesIndex']) -> 'CombinedIndex':
+        cps = [index.as_combined() for index in indexes]
+        ci = cls(cps)
+        return ci
+
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '') -> None:
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
@@ -105,6 +121,10 @@ class CombinedIndex(Sequence):
                         # read the patch image from the slide
                         region = Region.patch(row.x, row.y, self.patchsizes[cps_idx], self.levels[cps_idx])
                         image = slide.read_region(region)
+
+                        # apply any transforms, as indexed in the 'transform' column
+                        if transforms:
+                            image = transforms[row.transform](image)
 
                         # get the patch label as a string
                         labels = {v: k for k, v in self.datasets[cps_idx].labels.items()}
@@ -117,7 +137,7 @@ class CombinedIndex(Sequence):
                         # write out the slide
                         rel_slide_path = self.datasets[cps_idx].to_rel_path(slide_path)
                         slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
-                        patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
+                        patch_filename = slide_name_str + f"-{row.x}-{row.y}{affix}.png"
                         image_path = output_dir / label / patch_filename
                         image.save(image_path)
 
@@ -134,8 +154,9 @@ class SlidePatchSet(PatchSet):
     ) -> None:
         super().__init__(dataset, patch_size, level, patches_df)
         self.slide_idx = slide_idx
-        abs_slide_path, self.annotation_path, self.label, self.tags = dataset[slide_idx]
+        abs_slide_path, self.annotation_path, self.label, tags = dataset[slide_idx]
         self.slide_path = dataset.to_rel_path(abs_slide_path)
+        self.tags = [tg.strip() for tg in tags.split(';')]
 
     @classmethod
     def index_slide(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
@@ -148,7 +169,7 @@ class SlidePatchSet(PatchSet):
             labels_image = annotations.render(labels_shape, scale_factor)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
-            df, level, size = patch_finder(labels_image)
+            df, level, size = patch_finder(labels_image, slide.dimensions[patch_finder.patch_level])
             patchset = cls(slide_idx, dataset, size, level, df)
             return patchset
 
@@ -211,7 +232,9 @@ class SlidesIndex(Sequence):
         for ps in self.patches:
             # save out the csv file for this slide
             csv_path = ps.slide_path.with_suffix('.csv')
+            csv_path = output_dir / csv_path
             csv_path.parents[0].mkdir(parents=True, exist_ok=True)
+            print(f"Saving {csv_path}")
             ps.patches_df.to_csv(csv_path, index=False)
 
             # append information about slide to index
@@ -227,7 +250,7 @@ class SlidesIndex(Sequence):
 
     @classmethod
     def load(cls, dataset: Dataset, input_dir: Path) -> 'SlidesIndex':
-        def patchset_from_row(r: namedtuple) -> PatchSet:
+        def patchset_from_row(r) -> PatchSet:
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSet(int(r.slide_idx), dataset, int(r.patch_size), 
                                  int(r.level), patches_df)
@@ -246,14 +269,11 @@ class SlidePatchSetResults(SlidePatchSet):
 
     @classmethod
     def predict_slide(cls, sps: SlidePatchSet, classifier: nn.Module, batch_size: int, nworkers: int,
-                      transform_list: List = None):
-        if transform_list is None:
-            n_transforms = 1
-        else:
-            n_transforms = len(transform_list)
+                      transform):
+
         just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
         num_classes = len(just_patch_classes)
-        probs_out = inference_on_slide(sps, classifier, num_classes, batch_size, nworkers, n_transforms)
+        probs_out = inference_on_slide(sps, classifier, num_classes, batch_size, nworkers, transform)
         probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
         probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
         patchsetresults = cls(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df)
@@ -286,11 +306,23 @@ class SlidePatchSetResults(SlidePatchSet):
 
     def save_heatmap(self, class_name: str, output_dir: Path):
         # get the heatmap filename for this slide
-        img_path = output_dir / output_dir / self.slide_path.with_suffix('.png')
+        img_path = output_dir / self.slide_path.with_suffix('.png')
         # create heatmap and write out
         heatmap = self.to_heatmap(class_name)
         heatmap_out = np.array(np.multiply(heatmap, 255), dtype=np.uint8)
-        cv2.imwrite(img_path, heatmap_out)
+        cv2.imwrite(str(img_path), heatmap_out)
+
+    @classmethod
+    def predict_slide_threaded(cls, sps: SlidePatchSet, classifier: nn.Module, batch_size: int, nworkers: int,
+                      transform, device: int):
+
+        just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
+        num_classes = len(just_patch_classes)
+        probs_out = inference_on_slide_threaded(sps, classifier, num_classes, batch_size, nworkers, transform, device)
+        probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
+        probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
+        patchsetresults = cls(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df)
+        return patchsetresults
 
 
 class SlidesIndexResults(SlidesIndex):
@@ -307,7 +339,7 @@ class SlidesIndexResults(SlidesIndex):
                         classifier: nn.Module,
                         batch_size,
                         num_workers,
-                        transform_list,
+                        transform,
                         output_dir: Path,
                         results_dir_name: str,
                         heatmap_dir_name: str) -> 'SlidesIndexResults':
@@ -320,10 +352,16 @@ class SlidesIndexResults(SlidesIndex):
 
         spsresults = []
         for sps in si:
-            spsresult = SlidePatchSetResults.predict_slide(sps, classifier, batch_size, num_workers, transform_list)
+            spsresult = SlidePatchSetResults.predict_slide(sps, classifier, batch_size, num_workers, transform)
+            print(f"Saving {sps.slide_path}")
+            results_slide_dir = results_dir / sps.slide_path.parents[0]
+            results_slide_dir.mkdir(parents=True, exist_ok=True)
             spsresults.append(spsresult)
             spsresult.save_csv(results_dir)
-            spsresult.save_heatmap(heatmap_dir)
+            heatmap_slide_dir = heatmap_dir/ sps.slide_path.parents[0]
+            heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
+            ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
+            spsresult.save_heatmap('tumor', heatmap_dir)
 
         return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
 
@@ -357,3 +395,68 @@ class SlidesIndexResults(SlidesIndex):
         patches = [patchset_from_row(r) for r in index.itertuples()]
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
+
+ 
+    @classmethod
+    def predict_dataset_threaded(cls,
+                        si: SlidesIndex,
+                        classifier: nn.Module,
+                        batch_size,
+                        num_workers,
+                        transform,
+                        output_dir: Path,
+                        results_dir_name: str,
+                        heatmap_dir_name: str) -> 'SlidesIndexResults':
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        results_dir = output_dir / results_dir_name
+        results_dir.mkdir(parents=True, exist_ok=True)
+        heatmap_dir = output_dir / heatmap_dir_name
+        heatmap_dir.mkdir(parents=True, exist_ok=True)
+
+        ### experiment to distribute slides across multigpus for inference
+        # find how many gpus
+        ngpus = torch.cuda.device_count()
+
+        # work out how many slides and numbers in each split
+        nslides = len(si)
+        splits = np.rint(np.linspace(0, nslides, num=(ngpus+1))).astype(int)
+        start_indexes = splits[0:ngpus]
+        end_indexes = splits[1:]
+
+        # shuffle slide index
+        si = shuffle(si)
+        si_per_gpu = []
+        for ii in range(ngpus):
+            si_gpu = si[start_indexes[ii]:end_indexes[ii]]
+            si_per_gpu.append(si_gpu)
+
+        def worker(num):
+            si_thread = si_per_gpu[num]
+            spsresults_thread = []
+            for sps in si_thread:
+                spsresult = SlidePatchSetResults.predict_slide_threaded(sps, classifier, batch_size, num_workers, transform, num)
+                print(f"Saving {num}: {sps.slide_path}")
+                results_slide_dir = results_dir / sps.slide_path.parents[0]
+                results_slide_dir.mkdir(parents=True, exist_ok=True)
+                spsresults_thread.append(spsresult)
+                spsresult.save_csv(results_dir)
+                heatmap_slide_dir = heatmap_dir/ sps.slide_path.parents[0]
+                heatmap_slide_dir.mkdir(parents=True, exist_ok=True)
+                ### HACK since this is only binary at the moment it will always be the tumor heatmap we want need to change to work for multiple classes
+                spsresult.save_heatmap('tumor', heatmap_dir)         
+            spsresults[num] = spsresults_thread
+            return 
+
+        spsresults = [0] * ngpus
+        threads = []
+        for i in range(ngpus):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+            t.join()
+
+        spsresults_flat = [item for sublist in spsresults for item in sublist]
+
+        return cls(si.dataset, spsresults, output_dir, results_dir_name, heatmap_dir_name)
+    

@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from repath.utils.geometry import Size
 from typing import Dict, Tuple
 from random import randint
 
@@ -9,11 +10,11 @@ import pandas as pd
 
 from repath.utils.convert import to_frame_with_locations
 from repath.utils.filters import pool2d
-
+from repath.preprocess.patching.apply_transform import ApplyTransforms, SingleTransform
 
 class PatchFinder(metaclass=ABCMeta):
     @abstractmethod
-    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
+    def __call__(self, labels_image: np.array, slide_shape: Size) -> Tuple[pd.DataFrame, int, int]:
         raise NotImplementedError
 
     @property
@@ -31,7 +32,8 @@ class GridPatchFinder(PatchFinder):
         stride: int,  # defined in terms of the labels image space
         border: int = 0,
         jitter: int = 0,
-        remove_background: bool = True
+        remove_background: bool = True,
+        apply_transforms: ApplyTransforms = SingleTransform()
     ) -> None:
         """ Note that the assumption is that the same settings will be used for a number of different patches.
 
@@ -53,13 +55,13 @@ class GridPatchFinder(PatchFinder):
         self.border = border
         self.jitter = jitter
         self.remove_background = remove_background
-
+        self.apply_transforms = apply_transforms
         # some assumptions
         # 1. patch_size is some integer multiple of a pixel at labels_level
         # 2. patch_level is equal to or below labels_level
         # 3. stride is some integer multiple of a pixel at labels_level
 
-    def __call__(self, labels_image: np.array) -> Tuple[pd.DataFrame, int, int]:
+    def __call__(self, labels_image: np.array, slide_shape: Size) -> Tuple[pd.DataFrame, int, int]:
         """Patch finders can be called with an array of rendered annotations and produce a patch index.
 
         Args:
@@ -76,15 +78,20 @@ class GridPatchFinder(PatchFinder):
         # The pooling operation might be a parameter for the patch finder.
         patch_labels = pool2d(labels_image, kernel_size, label_level_stride, 0)
 
+        # convert the 2d array of patch labels to a data frame
         df = to_frame_with_locations(patch_labels, "label")
         df.row *= self.patch_size
         df.column *= self.patch_size
         df = df.rename(columns={"row": "y", "column": "x"})
         df = df.reindex(columns=["x", "y", "label"])
 
-        # 5. for each row, add the border
-        # self.border = border
-        # TODO: Add in the border transform
+        # for each patch, specify a transform
+        df = self.apply_transforms(df)
+
+        # for each row, add the border
+        df['x'] = np.subtract(df['x'], self.border)
+        df['y'] = np.subtract(df['y'], self.border)
+        self.patch_size = self.patch_size + (self.border*2)
 
         if self.jitter != 0:
 
@@ -95,9 +102,15 @@ class GridPatchFinder(PatchFinder):
             df["x"] = df["x"].apply(jitter)
             df["y"] = df["y"].apply(jitter)
 
-        # 6. remove the background
+        # remove the background
         if self.remove_background:
-            df = df[df.label != 'background']  # TODO: put this in as a method that is optional on the slide patch index (or something)
+            df = df[df.label != 0]  # TODO: put this in as a method that is optional on the slide patch index (or something)
+
+        # clip the patch coordinates to the slide dimensions
+        df['x'] = np.maximum(df['x'], 0)
+        df['y'] = np.maximum(df['y'], 0)
+        df['x'] = np.minimum(df['x'], slide_shape.width - self.patch_size)
+        df['y'] = np.minimum(df['y'], slide_shape.height - self.patch_size)
 
         # return the index and the data required to extract the patches later
         return df, self.patch_level, self.patch_size
