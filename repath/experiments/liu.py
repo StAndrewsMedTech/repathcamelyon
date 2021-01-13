@@ -89,8 +89,8 @@ def preprocess_samples() -> None:
     valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
 
     # sample from train and valid sets
-    train_samples = balanced_sample([train], 5000000)
-    valid_samples = balanced_sample([valid], 1250000)
+    train_samples = balanced_sample([train], 5000000, sampling_policy=weighted_random)
+    valid_samples = balanced_sample([valid], 1250000, sampling_policy=weighted_random)
 
     # create list of augmentations 
     augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
