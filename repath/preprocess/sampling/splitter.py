@@ -1,12 +1,21 @@
 import numpy as np
 import pandas as pd
+import random
 from abc import ABCMeta, abstractmethod
 from typing import Tuple
 
 from repath.preprocess.patching import SlidesIndex
 
 
-def split_camelyon16(index: SlidesIndex, train_percent: float, seed:int = 5678) -> Tuple[SlidesIndex, SlidesIndex]:
+"""
+Global stuff
+"""
+
+
+
+
+
+def split_camelyon16(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIndex, SlidesIndex]:
     print("Splitting Camelyon 16")
 
     # get summaries of total patch classes for each slide
@@ -28,7 +37,7 @@ def split_camelyon16(index: SlidesIndex, train_percent: float, seed:int = 5678) 
 
     # divide each class of slide according to train percent
     slide_numbers = np.array(list(range(len(index.dataset))))
-    np.random.seed(seed)
+
     normal_slides = slide_numbers[index.dataset.paths.label == 'normal']
     #print("normal_slides", normal_slides)
     normal_slides_train = np.random.choice(normal_slides, slide_numbers_train['normal'], replace=False)
@@ -69,7 +78,7 @@ def split_camelyon16(index: SlidesIndex, train_percent: float, seed:int = 5678) 
     return SlidesIndex(index.dataset, train_index), SlidesIndex(index.dataset, valid_index)
 
 
-def split_camelyon17(index: SlidesIndex, train_percent: float, seed:int = 5678) -> Tuple[SlidesIndex, SlidesIndex]:
+def split_camelyon17(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIndex, SlidesIndex]:
 
     # get summaries of total patch classes for each slide
     summaries = index.summary()

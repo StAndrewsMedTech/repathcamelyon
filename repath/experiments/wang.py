@@ -4,6 +4,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import loggers as pl_loggers
 import torch
 import torch.nn as nn
+import numpy as np
+import random
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
@@ -15,6 +17,7 @@ from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
 from repath.preprocess.sampling import split_camelyon16, balanced_sample
 from torchvision.models import GoogLeNet
+from repath.utils.seeds import set_seed
 
 """
 Global stuff
@@ -22,6 +25,9 @@ Global stuff
 experiment_name = "wang"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorOTSU()
+
+global_seed = 123
+
 
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
@@ -80,6 +86,7 @@ class PatchClassifier(pl.LightningModule):
 Experiment step
 """
 def preprocess_indexes() -> None:
+    set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
     patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=32)
@@ -92,6 +99,7 @@ def preprocess_indexes() -> None:
 
 
 def preprocess_samples() -> None:
+    set_seed(global_seed)
     # load in the train and valid indexes
     train_data = camelyon16.training()
     train = SlidesIndex.load(train_data, experiment_root / "train_index")
@@ -107,6 +115,7 @@ def preprocess_samples() -> None:
 
 
 def train_patch_classifier() -> None:
+    set_seed(global_seed)
     # transforms
     transform = Compose([
         RandomRotation((0, 360)),
@@ -121,8 +130,8 @@ def train_patch_classifier() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)   
     
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -152,6 +161,7 @@ def train_patch_classifier() -> None:
 
 
 def inference_on_train() -> None:
+    set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 

@@ -6,6 +6,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 import torch
+import random
 
 from repath.utils.paths import project_root
 from repath.utils.convert import remove_item_from_dict
@@ -18,6 +19,7 @@ from repath.postprocess.slide_dataset import SlideDataset
 from repath.postprocess.prediction import inference_on_slide
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
 
+from repath.utils.seeds import set_seed
 
 """
 Global stuff
@@ -25,6 +27,9 @@ Global stuff
 experiment_name = "example"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorOTSU()
+
+
+global_seed = 123
 
 
 class PatchClassifier(pl.LightningModule):
@@ -68,6 +73,7 @@ Sections of the experiment
 
 
 def preprocesses() -> None:
+    set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
     patch_finder = GridPatchFinder(6, 0, 256, 256)
@@ -88,12 +94,13 @@ def preprocesses() -> None:
 
 
 def train_patch_classifier() -> None:
+    set_seed(global_seed)
     # prepare our data
     batch_size = 128
     train_set = ImageFolder.load(experiment_root / "training_patches")
     valid_set = ImageFolder.load(experiment_root / "validation_patches")
-    train_loader = DataLoader(train_set, batch_size=batch_size)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size)
+    train_loader = DataLoader(train_set, batch_size=batch_size, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, worker_init_fn=np.random.seed(global_seed))
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -112,6 +119,7 @@ def train_patch_classifier() -> None:
 
 
 def inference_on_train() -> None:
+    set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
@@ -138,6 +146,7 @@ def inference_on_train() -> None:
 
 
 def create_hnm_patches() -> None:
+    set_seed(global_seed)
 
     input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
     input_dir17 = experiment_root / "train_index17" / "pre_hnm_results"
@@ -163,6 +172,8 @@ def create_hnm_patches() -> None:
 
 
 def preprocess_for_testing() -> None:
+    set_seed(global_seed)
+
     # index all the patches for the camelyon16 dataset
     test_data = camelyon16.testing()
     patch_finder = GridPatchFinder(6, 0, 256, 256)
@@ -185,6 +196,7 @@ def preprocess_for_testing() -> None:
 
 
 def inference_on_slides() -> None:
+    set_seed(global_seed)
 
     batsz = 128
     nwork = 80
@@ -253,6 +265,7 @@ def inference_on_slides() -> None:
 
 
 def calculate_patch_level_results() -> None:
+    set_seed(global_seed)
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
@@ -284,6 +297,7 @@ def calculate_patch_level_results() -> None:
 
 
 def calculate_lesion_level_results() -> None:
+    set_seed(global_seed)
 
     results_pre_hnm = experiment_root / "valid_index" / "pre_hnm_results"
     results_post_hnm = experiment_root / "valid_index" / "post_hnm_results"
