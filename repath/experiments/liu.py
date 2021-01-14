@@ -14,7 +14,7 @@ from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
-from repath.preprocess.sampling import split_camelyon16, balanced_sample
+from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
 
 

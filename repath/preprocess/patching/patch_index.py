@@ -124,7 +124,7 @@ class CombinedIndex(object):
 
                         # apply any transforms, as indexed in the 'transform' column
                         if transforms:
-                            image = transforms[row.transform](image)
+                            image = transforms[row.transform-1](image)
 
                         # get the patch label as a string
                         labels = {v: k for k, v in self.datasets[cps_idx].labels.items()}
@@ -259,6 +259,10 @@ class SlidesIndex(Sequence):
         patches = [patchset_from_row(r) for r in index.itertuples()]
         rtn = cls(dataset, patches)
         return rtn
+
+    def select_annotated(self) -> SlidesIndex:
+        annotated = [ps for ps in index if 'annotated' in ps.tags]
+        return SlidesIndex(self.dataset, annotated)
 
 
 class SlidePatchSetResults(SlidePatchSet):
