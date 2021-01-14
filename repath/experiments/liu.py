@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize
-from torchvision.models import Inception3
+from torchvision.models import inception_v3
 
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
@@ -37,27 +37,39 @@ class PatchClassifier(pl.LightningModule):
         super().__init__()
         self.model = Inception3(num_classes=2)
 
-    def step(self, batch, batch_idx, label):
+    def training_step(self, batch, batch_idx):
         x, y = batch
-        logits = self.model(x)
-        pred = torch.log_softmax(logits, dim=1)
+        output, aux1 = self.model(x)
+        pred = torch.log_softmax(output, dim=1)
 
         criterion = nn.CrossEntropyLoss()
-        loss = criterion(logits, y)
-        self.log(f"{label}_loss", loss)
+        loss1 = criterion(output, y)
+        loss2 = criterion(aux1, y)
+        ### TODO:  check how losses are weighted
+        loss = loss1 + 0.4 * loss2
+        self.log("train_loss", loss)
         
         correct=pred.argmax(dim=1).eq(y).sum().item()
         total=len(y)   
         accu = correct / total
-        self.log(f"{label}_accuracy", accu)
-        
+        self.log("train_accuracy", accu)
+
         return loss
 
-    def training_step(self, batch, batch_idx):
-        return self.step(batch, batch_idx, "train")
-
     def validation_step(self, batch, batch_idx):
-        return self.step(batch, batch_idx, "val")
+        x, y = batch
+        output = self.model(x)
+        pred = torch.log_softmax(output, dim=1)
+
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(output, y)
+        self.log("val_loss", loss)
+        
+        correct=pred.argmax(dim=1).eq(y).sum().item()
+        total=len(y)   
+        accu = correct / total
+        self.log("val_accuracy", accu)
+        return loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.RMSProp(self.model.parameters(), 
@@ -114,8 +126,6 @@ def train_patch_classifier() -> None:
     set_seed(global_seed)
     # transforms
     transform = Compose([
-        RandomRotation((0, 360)),
-        RandomCrop((224, 224)),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])

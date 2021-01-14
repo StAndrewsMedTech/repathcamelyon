@@ -79,7 +79,6 @@ def training_small():
     return Camelyon16(project_root() / cam16.root, df)
 
 
-
 def testing():
     # TODO: Add this
     pass
