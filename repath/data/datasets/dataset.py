@@ -20,7 +20,7 @@ class Dataset(Sequence, metaclass=ABCMeta):
 
     Args:
         Sequence (Sequence): [description]
-        metaclass ([type], optional): [description]. Defaults to ABCMeta.
+        metaclass ([type], optional):  Defaults to ABCMeta.
     """
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         # process the paths_df (has four columns 'slide', 'annotation', 'label', 'tags')

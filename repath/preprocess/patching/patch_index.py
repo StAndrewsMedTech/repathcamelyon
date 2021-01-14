@@ -66,7 +66,7 @@ class CombinedPatchSet(PatchSet):
         # columns of patches_df are x, y, label, slide_idx
 
     def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
-        """[summary]
+        """Saves patches after applying transforms to them 
 
         Args:
             output_dir (Path): The path to save the generated patches.
@@ -128,7 +128,7 @@ class CombinedIndex(object):
         return ci
 
     def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '') -> None:
-        """Saves patches after applying transforms to them.
+        """Saves patches after applying transforms to them for more than one datastes.
 
         Args:
             output_dir (Path): The path to save the patches.

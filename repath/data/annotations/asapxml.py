@@ -6,14 +6,14 @@ from repath.data.annotations.annotation import Annotation
 
 
 def annotation_from_tag(tag: ET.Element, group_labels: Dict[str, str]) -> Annotation:
-    """ Gets annotation form tags in XML data
+    """ Gets annotation tags from XML data
 
     Args:
         tag (ET.Element): XML data
         group_labels(Dict[str, str]): A dictionary of strings defining labels.
 
     Returns:
-        Annotations attributes such as name, type, label and vertices
+        Annotations tags such as name, type, label and vertices
 
     """
     # get the attributes
