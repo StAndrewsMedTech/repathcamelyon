@@ -204,36 +204,36 @@ def inference_on_slides() -> None:
     heatmap_dir_name = "heatmaps"
 
     # Camelyon 16 details
-    outdir_val16 = experiment_root / "valid_index"
-    valid16 = SlidesIndex.load(camelyon16.training(), outdir_val16)
-    outdir_tst16 = experiment_root / "test_index"
-    test16 = SlidesIndex.load(camelyon16.testing(), outdir_tst16)
+    valid16_dir_in = experiment_root / "valid_index"
+    valid16 = SlidesIndex.load(camelyon16.training(), valid16_dir_in)
+    test16_dir_in = experiment_root / "test_index"
+    test16 = SlidesIndex.load(camelyon16.testing(), test16_dir_in)
 
     # Camelyon 17 details
-    outdir_val17 = experiment_root / "valid_index_17"
-    valid17 = SlidesIndex.load(camelyon17.training(), outdir_val17)
-    outdir_tst17 = experiment_root / "test_index_17"
-    test17 = SlidesIndex.load(camelyon17.testing(), outdir_tst17)
+    valid17_dir_in = experiment_root / "valid_index_17"
+    valid17 = SlidesIndex.load(camelyon17.training(), valid17_dir_in)
+    test17_dir_in = experiment_root / "test_index_17"
+    test17 = SlidesIndex.load(camelyon17.testing(), test17_dir_in)
 
     # Pre hnm details
     cp_path_pre_hnm = (experiment_root / "patch_model").glob("*.ckpt")[0]
     classifier_pre_hnm = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path_pre_hnm, model=Backbone()
     )
-    outdir_val16_pre = outdir_val16 / "pre_hnm_results"
-    outdir_val17_pre = outdir_val17 / "pre_hnm_results"
-    outdir_tst16_pre = outdir_tst16 / "pre_hnm_results"
-    outdir_tst17_pre = outdir_tst17 / "pre_hnm_results"
+    outdir_val16_pre = experiment_root / "pre_hnm_results" / "valid16"
+    outdir_val17_pre = experiment_root / "pre_hnm_results" / "valid17"
+    outdir_tst16_pre = experiment_root / "pre_hnm_results" / "test16"
+    outdir_tst17_pre = experiment_root / "pre_hnm_results" / "test17"
 
     # Post hnm details
-    cp_path_post_hnm = (experiment_root / "patch_model").glob("*.ckpt")[0]
+    cp_path_post_hnm = (experiment_root / "patch_model_hnm").glob("*.ckpt")[0]
     classifier_post_hnm = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path_post_hnm, model=Backbone()
     )
-    outdir_val16_post = outdir_val16 / "post_hnm_results"
-    outdir_val17_post = outdir_val17 / "post_hnm_results"
-    outdir_tst16_post = outdir_tst16 / "post_hnm_results"
-    outdir_tst17_post = outdir_tst17 / "post_hnm_results"
+    outdir_val16_post = experiment_root / "post_hnm_results" / "valid16"
+    outdir_val17_post = experiment_root / "post_hnm_results" / "valid17"
+    outdir_tst16_post = experiment_root / "post_hnm_results" / "test16"
+    outdir_tst17_post = experiment_root / "post_hnm_results" / "test17"
 
     # pre hnm results
     valid_results_16_pre = SlidesIndexResults.predict_dataset(valid16, classifier_pre_hnm, batsz, nwork,
@@ -269,30 +269,109 @@ def calculate_patch_level_results() -> None:
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
+    patch_lev = "patch_summaries"
 
-    # Camelyon 16 details
-    outdir_val16 = experiment_root / "valid_index"
-    outdir_tst16 = experiment_root / "test_index"
-    # Camelyon 17 details
-    outdir_val17 = experiment_root / "valid_index_17"
-    outdir_tst17 = experiment_root / "test_index_17"
+    pre_hnm_dir = experiment_root / "pre_hnm_results" 
+    post_hnm_dir = experiment_root / "post_hnm_results" 
 
-    # Pre hnm details
-    outdir_val16_pre = outdir_val16 / "pre_hnm_results"
-    outdir_val17_pre = outdir_val17 / "pre_hnm_results"
-    outdir_tst16_pre = outdir_tst16 / "pre_hnm_results"
-    outdir_tst17_pre = outdir_tst17 / "pre_hnm_results"
+    # Pre hnm input details
+    val16_pre_in = pre_hnm_dir / "valid16"
+    val17_pre_in = pre_hnm_dir / "valid17"
+    tst16_pre_in = pre_hnm_dir  / "test16"
+    tst17_pre_in = pre_hnm_dir  / "test17"
 
-    # Post hnm details
-    outdir_val16_post = outdir_val16 / "post_hnm_results"
-    outdir_val17_post = outdir_val17 / "post_hnm_results"
-    outdir_tst16_post = outdir_tst16 / "post_hnm_results"
-    outdir_tst17_post = outdir_tst17 / "post_hnm_results"
+    # Post hnm input details
+    val16_post_in = post_hnm_dir / "valid16"
+    val17_post_in = post_hnm_dir / "valid17"
+    tst16_post_in = post_hnm_dir / "test16"
+    tst17_post_in = post_hnm_dir / "test17"
 
+    # Pre hnm output details
+    val16_pre_out = pre_hnm_dir / patch_lev / "valid16"
+    val17_pre_out = pre_hnm_dir / patch_lev / "valid17"
+    val1617_pre_out = pre_hnm_dir / patch_lev / "valid1617"
+    tst16_pre_out = pre_hnm_dir / patch_lev / "test16"
+    tst17_pre_out = pre_hnm_dir / patch_lev / "test17"
+    tst1617_pre_out = pre_hnm_dir / patch_lev / "test1617"
 
-    valid_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), outdir_val16_pre,
+    # Post hnm output details
+    val16_post_out = post_hnm_dir / patch_lev / "valid16"
+    val17_post_out = post_hnm_dir / patch_lev / "valid17"
+    val1617_post_out = post_hnm_dir / patch_lev / "valid1617"
+    tst16_post_out = post_hnm_dir / patch_lev / "test16"
+    tst17_post_out = post_hnm_dir / patch_lev / "test17"
+    tst1617_post_out = post_hnm_dir / patch_lev / "test1617"
+
+    # read in the valid 16 pre results
+    valid_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), val16_pre_in,
                                                                  results_dir_name, heatmap_dir_name)
-    valid_results_16_pre = valid_results_16_pre.as_combined()
+    # create patch level metrics for valid 16 pre
+    patch_level_metrics([valid_results_16_pre], val16_pre_out, ci=False)
+
+    # read in the valid 17 pre results
+    valid_results_17_pre = SlidesIndexResults.load_results_index(camelyon17.training(), val17_pre_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # select just the annotated slides
+    valid_results_17_pre_annotated = valid_results_17_pre.select_annotated()
+    # create patch level metrics for valid 17 pre
+    patch_level_metrics([valid_results_17_pre_annotated], val17_pre_out, ci=False)
+
+    # create patch level metrics for combined valid 16 & valid 17 pre
+    patch_level_metrics([valid_results_16_pre, valid_results_17_pre_annotated], val1617_pre_out, ci=False)
+
+
+    # read in the test 16 pre results
+    test_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), tst16_pre_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # create patch level metrics for test 16 pre
+    patch_level_metrics([test_results_16_pre], tst16_pre_out, ci=False)
+
+    # read in the test 17 pre results
+    test_results_17_pre = SlidesIndexResults.load_results_index(camelyon17.training(), tst17_pre_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # select just the annotated slides
+    test_results_17_pre_annotated = test_results_17_pre.select_annotated()
+    # create patch level metrics for test 17 pre
+    patch_level_metrics([test_results_17_pre_annotated], tst17_pre_out, ci=False)
+
+    # create patch level metrics for combined test 16 & test 17 pre
+    patch_level_metrics([test_results_16_pre, test_results_17_pre_annotated], tst1617_pre_out, ci=False)
+
+
+    # read in the valid 16 post results
+    valid_results_16_post = SlidesIndexResults.load_results_index(camelyon16.training(), val16_post_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # create patch level metrics for valid 16 post
+    patch_level_metrics([valid_results_16_post], val16_post_out, ci=False)
+
+    # read in the valid 17 post results
+    valid_results_17_post = SlidesIndexResults.load_results_index(camelyon17.training(), val17_post_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # select just the annotated slides
+    valid_results_17_post_annotated = valid_results_17_post.select_annotated()
+    # create patch level metrics for valid 17 post
+    patch_level_metrics([valid_results_17_post_annotated], val17_post_out, ci=False)
+
+    # create patch level metrics for combined valid 16 & valid 17 post
+    patch_level_metrics([valid_results_16_post, valid_results_17_post_annotated], val1617_post_out, ci=False)
+
+
+    # read in the test 16 post results
+    test_results_16_post = SlidesIndexResults.load_results_index(camelyon16.training(), tst16_post_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # create patch level metrics for test 16 post
+    patch_level_metrics([test_results_16_post], tst16_post_out, ci=False)
+
+    # read in the test 17 post results
+    test_results_17_post = SlidesIndexResults.load_results_index(camelyon17.training(), tst17_post_in,
+                                                                 results_dir_name, heatmap_dir_name)
+    # select just the annotated slides
+    test_results_17_post_annotated = test_results_17_post.select_annotated()
+    # create patch level metrics for test 17 post
+    patch_level_metrics([test_results_17_post_annotated], tst17_post_out, ci=False)
+
+    # create patch level metrics for combined test 16 & test 17 post
+    patch_level_metrics([test_results_16_post, test_results_17_post_annotated], tst1617_post_out, ci=False)
 
 
 

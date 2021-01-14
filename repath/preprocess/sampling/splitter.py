@@ -152,6 +152,8 @@ def split_camelyon17(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIn
         print("Warning: splitting on patients has some slide classes in train or valid as zero")
 
     return train_index, valid_index
+<<<<<<< HEAD
+=======
 
 
 def select_annotated(index: SlidesIndex) -> SlidesIndex:
@@ -161,3 +163,4 @@ def select_annotated(index: SlidesIndex) -> SlidesIndex:
 =======
     return SlidesIndex(index.dataset, annotated)
 >>>>>>> 83b32fd22eabdf889c8992f75fabc4b8a784c149
+>>>>>>> 33eff91e76a2e9ebc02caa63747d5a72499225d1
