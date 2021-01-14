@@ -16,6 +16,14 @@ class SingleTransform(ApplyTransforms):
 
 
     def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        """Adds a transform column to the data frame with value = 1
+
+        Args:
+            df_in (pd.DataFrame): The input dataframe
+
+        Returns:
+            pd.DataFrame: The new dataframe with added transform column
+        """
         df = df_in
         df['transform'] = 1
         return df
@@ -32,6 +40,14 @@ class LiuTransform(ApplyTransforms):
 
 
     def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        """Adds a transform column to the data frame with value = number_of_transforms for each patch
+
+        Args:
+            df_in (pd.DataFrame): The input dataframe
+
+        Returns:
+            pd.DataFrame: The new dataframe with addetransform column
+        """
         df = df_in
         df['transform'] = 1
         df_normal = df[df['label']!= self.label]

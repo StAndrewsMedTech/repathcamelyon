@@ -18,6 +18,14 @@ class Camelyon16(Dataset):
         super().__init__(root, paths)
 
     def load_annotations(self, file: Path) -> AnnotationSet:
+        """ Load annotations form a given annotation file path.
+
+        Args:
+            file (Path): Path to the annotation file.  
+        
+        Returns:
+            AnnotationSet which includes: annotations, labels, labels_order and fill_label
+        """
         group_labels = {"Tumor": "tumor", "_0": "tumor", "_1": 'tumor', "_2": 'normal'}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["background", "tumor", "normal"]
@@ -37,6 +45,11 @@ class Camelyon16(Dataset):
 
 
 def training():
+    """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
+
+    Returns:
+        DataFrame (pd.DataFrame): Train data frame
+    """
     # set up the paths to the slides and annotations
     root = project_root() / "data" / "camelyon16" / "raw" / "training"
     annotations_dir = root / "lesion_annotations"

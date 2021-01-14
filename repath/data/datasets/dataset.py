@@ -19,7 +19,7 @@ class Dataset(Sequence, metaclass=ABCMeta):
     It implements the Sequence protocol so that it can be iterated over.
 
     Args:
-        Sequence ([type]): [description]
+        Sequence (Sequence): [description]
         metaclass ([type], optional): [description]. Defaults to ABCMeta.
     """
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:

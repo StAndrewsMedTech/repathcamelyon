@@ -86,6 +86,8 @@ class PatchClassifier(pl.LightningModule):
 Experiment step
 """
 def preprocess_indexes() -> None:
+    """ Generates patch_index files for train and validation slide
+    """
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
@@ -99,6 +101,8 @@ def preprocess_indexes() -> None:
 
 
 def preprocess_samples() -> None:
+    """Generates all patches for train and validation sets
+    """
     set_seed(global_seed)
     # load in the train and valid indexes
     train_data = camelyon16.training()
@@ -115,6 +119,8 @@ def preprocess_samples() -> None:
 
 
 def train_patch_classifier() -> None:
+    """ Trains a classifier on the train patches and validates on validation patches.
+    """
     set_seed(global_seed)
     # transforms
     transform = Compose([
@@ -161,6 +167,8 @@ def train_patch_classifier() -> None:
 
 
 def inference_on_train() -> None:
+    """Inferencing on train patches using the trained model
+    """
     set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)

@@ -54,6 +54,15 @@ class SlideBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     def get_thumbnail(self, level: int) -> np.array:
+        """ Generated the thumbnail of the slide at a given level.
+
+        Args:
+            level (int): The level for generating  thumbnail.
+
+        Returns:
+            The thumbnail of the slide at the given level as a numpy array
+
+        """
         # TODO: check this downscaling is ok
         size = self.dimensions[level]
         region = Region(level=level, location=(0, 0), size=size)
