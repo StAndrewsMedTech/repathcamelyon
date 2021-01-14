@@ -121,7 +121,7 @@ class CombinedIndex(object):
         """Combine a list of SlideIndices as one SlideIndex.
 
         Returns:
-            SlideIndex: Combines slideIndex as a single SlideIndex.
+            SlideIndex: A single SLideIndex which is the combination of all given SlideIndices.
         """
         cps = [index.as_combined() for index in indexes]
         ci = cls(cps)
@@ -186,13 +186,13 @@ class SlidePatchSet(PatchSet):
         """[summary]
 
         Args:
-            slide_idx (int): [description]
-            dataset (Dataset): [description]
-            tissue_detector (TissueDetector): [description]
-            patch_finder (PatchFinder): [description]
+            slide_idx (int): Index of the slide
+            dataset (Dataset): An object that represents a set of slides and their annotations.
+            tissue_detector (TissueDetector): A method for segmenting tissue from non-tissue in an slide.
+            patch_finder (PatchFinder): 
 
         Returns:
-            [type]: [description]
+            pathset: 
         """
         slide_path, annotation_path, _, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
@@ -350,7 +350,7 @@ class SlidePatchSetResults(SlidePatchSet):
         return patchsetresults
 
     def to_heatmap(self, class_name: str) -> np.array:
-        """[summary]
+        """Converts probabilities to a hetmap for the given class.
 
         Args:
             class_name (str): A string defining the class we want to create heatmaps for.

@@ -30,6 +30,7 @@ global_seed = 123
 
 
 class PatchClassifier(pl.LightningModule):
+    
     def __init__(self) -> None:
         super().__init__()
         self.model = GoogLeNet(num_classes=2)

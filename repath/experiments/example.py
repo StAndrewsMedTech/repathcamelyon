@@ -74,6 +74,12 @@ Sections of the experiment
 
 
 def preprocesses() -> None:
+    """Performs preprocess steps:
+        -Getting train slides and their associated annotation files from folders. 
+        -Index to all the patches in the dataset
+        -split patches to train and validation sets
+        -saving the patches in respective folder
+    """
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
@@ -95,6 +101,8 @@ def preprocesses() -> None:
 
 
 def train_patch_classifier() -> None:
+    """Trains a patch classifier on train patches and validates on validation patches.
+    """
     set_seed(global_seed)
     # prepare our data
     batch_size = 128
@@ -120,6 +128,8 @@ def train_patch_classifier() -> None:
 
 
 def inference_on_train() -> None:
+    """Performs inference on train patches using the initial trained mode.
+    """
     set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
@@ -147,6 +157,8 @@ def inference_on_train() -> None:
 
 
 def create_hnm_patches() -> None:
+    """Creates extra patches doing hard negative mining.
+    """
     set_seed(global_seed)
 
     input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
@@ -173,6 +185,11 @@ def create_hnm_patches() -> None:
 
 
 def preprocess_for_testing() -> None:
+    """Performa all preprocess steps on testing datasets which includes:
+        - Getting test slides from respective folders.
+        -Index to all the patches in the dataset
+        -saving the patches in respective folder
+    """
     set_seed(global_seed)
 
     # index all the patches for the camelyon16 dataset
@@ -266,7 +283,6 @@ def inference_on_slides() -> None:
 
 
 def calculate_patch_level_results() -> None:
-    def func
     set_seed(global_seed)
 
     results_dir_name = "results"
