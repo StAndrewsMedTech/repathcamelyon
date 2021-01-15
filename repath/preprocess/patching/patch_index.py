@@ -18,7 +18,6 @@ from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.data.slides import Region
 from repath.utils.convert import remove_item_from_dict
-from repath.postprocess.prediction import inference_on_slide, inference_on_slide_threaded
 
 
 class PatchSet(Sequence):

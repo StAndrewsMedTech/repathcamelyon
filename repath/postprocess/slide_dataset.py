@@ -7,7 +7,7 @@ from repath.data.slides.slide import Region
 
 
 class SlideDataset(Dataset):
-    def __init__(self, ps: PatchSet, transform = None) -> None:
+    def __init__(self, ps: 'PatchSet', transform = None) -> None:
         super().__init__()
         self.ps = ps
         self.slide = ps.dataset.slide_cls(ps.abs_slide_path)

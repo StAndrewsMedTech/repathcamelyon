@@ -16,8 +16,9 @@ from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 import repath.data.datasets.camelyon17 as camelyon17
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
-from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
-from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, select_annotated
+from repath.preprocess.patching import GridPatchFinder, SlidesIndex
+from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
+from repath.postprocess.results import SlidesIndexResults
 from repath.utils.seeds import set_seed
 """
 Global stuff
