@@ -6,6 +6,7 @@ from pytorch_lightning import loggers as pl_loggers
 import torch
 import numpy as np
 import random
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
@@ -35,7 +36,7 @@ global_seed = 123
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
-        self.model = Inception3(num_classes=2)
+        self.model = inception_v3(num_classes=2)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -72,7 +73,7 @@ class PatchClassifier(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.RMSProp(self.model.parameters(), 
+        optimizer = torch.optim.RMSprop(self.model.parameters(), 
                                     lr=0.05, 
                                     momentum=0.9, 
                                     weight_decay=0.0,

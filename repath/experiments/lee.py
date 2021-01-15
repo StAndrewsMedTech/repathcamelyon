@@ -17,7 +17,7 @@ import repath.data.datasets.camelyon16 as camelyon16
 import repath.data.datasets.camelyon17 as camelyon17
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
-from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, select_annotated
+from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
 from repath.utils.seeds import set_seed
 """
 Global stuff
@@ -84,8 +84,6 @@ Experiment step
 
 
 def preprocess_indexes() -> None:
-   """
-   """
     set_seed(global_seed)
     patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=256, stride=256)
 
@@ -121,8 +119,8 @@ def preprocess_samples() -> None:
     valid17 = SlidesIndex.load(train_data17, experiment_root / "valid_index17")
 
     # remove non-annotated slides from camelyon17
-    train17 = select_annotated(train17)
-    valid17 = select_annotated(valid17)
+    train17 = train17.select_annotated()
+    valid17 = valid17.select_annotated()
 
     # sample from train and valid sets
     train_samples = balanced_sample([train16, train17], 47574)

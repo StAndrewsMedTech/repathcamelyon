@@ -318,10 +318,10 @@ def calculate_patch_level_results() -> None:
 
     set_seed(global_seed)
 
-    patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training())
-    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing())
-    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training())
-    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing())
+    patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
 
 
 def calculate_lesion_level_results() -> None:
