@@ -17,7 +17,7 @@ import repath.data.datasets.camelyon16 as camelyon16
 import repath.data.datasets.camelyon17 as camelyon17
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, SlidesIndexResults
-from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
+from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, select_annotated
 from repath.utils.seeds import set_seed
 """
 Global stuff
@@ -119,8 +119,8 @@ def preprocess_samples() -> None:
     valid17 = SlidesIndex.load(train_data17, experiment_root / "valid_index17")
 
     # remove non-annotated slides from camelyon17
-    train17 = train17.select_annotated()
-    valid17 = valid17.select_annotated()
+    train17 = select_annotated(train17)
+    valid17 = select_annotated(valid17)
 
     # sample from train and valid sets
     train_samples = balanced_sample([train16, train17], 47574)
@@ -271,3 +271,31 @@ def retrain_patch_classifier_hnm() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
                          logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+def inference_on_valid() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "valid16"
+    output_dir17 = experiment_root / "post_hnm_results" / "valid17"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
+    train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
+
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
+                                                         results_dir_name, heatmap_dir_name)
+    train_results16.save_results_index()
+
+    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, transform, 128, output_dir17,
+                                                         results_dir_name, heatmap_dir_name)
+    train_results17.save_results_index()

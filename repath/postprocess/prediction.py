@@ -3,7 +3,7 @@ import torch
 
 from repath.postprocess.slide_dataset import SlideDataset
 
-def evaluate_loop_dp(model, device, loader, num_classes):
+def evaluate_on_multiple_devices(model, device, loader, num_classes):
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
@@ -35,7 +35,7 @@ def evaluate_loop_dp(model, device, loader, num_classes):
     return prob_out
 
 
-def evaluate_loop_threaded(model, device, loader, num_classes):
+def evaluate_on_device(model, device, loader, num_classes):
 
     model.eval()
     model.to(device)
@@ -61,130 +61,3 @@ def evaluate_loop_threaded(model, device, loader, num_classes):
                 print('Batch {} of {}'.format(idx, len(loader)))
 
     return prob_out
-
-
-def inference_on_slide(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
-                       batch_size: int, num_workers: int, transform) -> np.array:
-
-    """ runs inference for every patch on a slide using data parallel
-
-    Outputs probabilities for each class
-
-    Args:
-        slideps: A SlidePatchSet object containing all non background patches for the slide
-        model: a patch classifier model
-        num_classes: the number of output classes predicted by the model
-        batch_size: the batch size for inference
-        num_workers: the num_workers for inference
-        ntransforms: the number of predictions per patch. Each patch can be predicted multiple times eg rotations
-            or flips, the mean across thes transforms is found for each patch
-
-    Returns:
-        An ndarray the same length as the slide dataset with a column for each class containing a float that
-        represents the probability of the patch being that class.
-        
-    """
-
-    # Check if GPU is available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    slide_dataset = SlideDataset(slideps, transform)
-
-    test_loader = torch.utils.data.DataLoader(slide_dataset, shuffle=False,
-                                              batch_size=batch_size,  num_workers=num_workers)
-
-    probabilities = evaluate_loop_dp(model, device, test_loader, num_classes)
-
-    ### HACK - ntransforms only needed for google paper need to sort out using transform compose or list of transform compose
-    ntransforms = 1
-
-    npreds = int(len(slide_dataset) * ntransforms)
-
-    probabilities = probabilities[0:npreds, :]
-
-    if ntransforms > 1:
-        prob_rows = probabilities.shape[0]
-        prob_rows = int(prob_rows / ntransforms)
-        probabilities_reshape = np.empty((prob_rows, num_classes))
-        for cl in num_classes:
-            class_probs = probabilities[:, cl]
-            class_probs = np.reshape(class_probs, (ntransforms, prob_rows)).T
-            class_probs = np.mean(class_probs, axis=1)
-            probabilities_reshape[:, cl] = class_probs
-        probabilities = probabilities_reshape
-
-    return probabilities
-
-
-def inference_on_slide_threaded(slideps: 'SlidePatchSet', model: torch.nn.Module, num_classes: int,
-                       batch_size: int, num_workers: int, transform, device) -> np.array:
-
-    """ runs inference for every patch on a slide using data parallel
-
-    Outputs probabilities for each class
-
-    Args:
-        slideps: A SlidePatchSet object containing all non background patches for the slide
-        model: a patch classifier model
-        num_classes: the number of output classes predicted by the model
-        batch_size: the batch size for inference
-        num_workers: the num_workers for inference
-        ntransforms: the number of predictions per patch. Each patch can be predicted multiple times eg rotations
-            or flips, the mean across thes transforms is found for each patch
-
-    Returns:
-        An ndarray the same length as the slide dataset with a column for each class containing a float that
-        represents the probability of the patch being that class.
-        
-    """
-
-    # Check if GPU is available
-    device = torch.device(f"cuda:{device}" if torch.cuda.is_available() else "cpu")
-
-    slide_dataset = SlideDataset(slideps, transform)
-
-    test_loader = torch.utils.data.DataLoader(slide_dataset, shuffle=False,
-                                              batch_size=batch_size,  num_workers=num_workers)
-
-    probabilities = evaluate_loop_threaded(model, device, test_loader, num_classes)
-
-    ### HACK - ntransforms only needed for google paper need to sort out using transform compose or list of transform compose
-    ntransforms = 1
-
-    npreds = int(len(slide_dataset) * ntransforms)
-
-    probabilities = probabilities[0:npreds, :]
-
-    if ntransforms > 1:
-        prob_rows = probabilities.shape[0]
-        prob_rows = int(prob_rows / ntransforms)
-        probabilities_reshape = np.empty((prob_rows, num_classes))
-        for cl in num_classes:
-            class_probs = probabilities[:, cl]
-            class_probs = np.reshape(class_probs, (ntransforms, prob_rows)).T
-            class_probs = np.mean(class_probs, axis=1)
-            probabilities_reshape[:, cl] = class_probs
-        probabilities = probabilities_reshape
-
-    return probabilities
-
-
-
-### Below is initial pseudo code on ddp needs developing to speed up inference
-#def process_predict(rank, loader_for_subset, model, batch_size, num_classes):
-#    model = model.to_gpu(rank)
-#    output = Tensor.empty(len(loader_for_subset) * batch_size, num_classes))
-#    for batch_idx, batch in enumerate(loader_for_subset):
-#        batch = batch.to_gpu(rank)
-#        y = model(batch)
-#        y = nn.softmax(y)
-#        output[batch_idx * batch_size, :] = y
-#    return output
-#
-#
-#torch.multiprocessing.spawn(fn, args=(), nprocs=1, join=True, daemon=False, start_method='spawn')#
-#
-#
-#def distibuted_predict(model, patchset):
-#    dataset = SlideDataset(patchset)
-#    sampler = SequentialSampler(dataset)
