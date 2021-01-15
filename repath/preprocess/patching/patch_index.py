@@ -260,8 +260,8 @@ class SlidesIndex(Sequence):
         rtn = cls(dataset, patches)
         return rtn
 
-    def select_annotated(self) -> SlidesIndex:
-        annotated = [ps for ps in index if 'annotated' in ps.tags]
+    def select_annotated(self) -> 'SlidesIndex':
+        annotated = [ps for ps in self.patches if 'annotated' in ps.tags]
         return SlidesIndex(self.dataset, annotated)
 
 

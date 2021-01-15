@@ -266,115 +266,45 @@ def inference_on_slides() -> None:
 
 
 def calculate_patch_level_results() -> None:
-    def func
+    def patch_dataset_function(modelname: str, splitname: str, dataset16: SlideDataset, dataset17: SlideDataset):
+        # define strings for model and split
+        model_dir_name = modelname + '_results'
+        splitname16 = splitname + '16'
+        splitname17 = splitname + '17'
+        splitname1617 = splitname + '1617'
+        results_out_name = "patch_summaries"
+        results_in_name = "results"
+        heatmap_in_name = "heatmaps"
+
+        # set paths for model and split
+        model_dir = experiment_root / model_dir_name
+        splitdirin16 = model_dir / splitname16
+        splitdirin17 = model_dir / splitname17
+        splitdirout16 = model_dir / results_out_name / splitname16
+        splitdirout17 = model_dir / results_out_name / splitname17
+        splitdirout1617 = model_dir / results_out_name / splitname1617
+
+        # read in predictions
+        split_results_16 = SlidesIndexResults.load_results_index(dataset16, splitdirin16,
+                                                                 results_in_name, heatmap_in_name)
+        split_results_17 = SlidesIndexResults.load_results_index(dataset17, splitdirin17,
+                                                                 results_in_name, heatmap_in_name)
+        split_results_17_annotated = split_results_17.select_annotated()
+
+        # calculate patch level results
+        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname ' dataset'
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False)
+        title17 = experiment_name + ' experiment ' + modelname + ' model Camelyon 17 ' + splitname ' dataset'
+        patch_level_metrics([split_results_17], splitdirout17, title17, ci=False)
+        title1617 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 & 17 ' + splitname ' dataset'
+        patch_level_metrics([split_results_1617], splitdirout1617, title1617, ci=False)
+
     set_seed(global_seed)
 
-    results_dir_name = "results"
-    heatmap_dir_name = "heatmaps"
-    patch_lev = "patch_summaries"
-
-    pre_hnm_dir = experiment_root / "pre_hnm_results" 
-    post_hnm_dir = experiment_root / "post_hnm_results" 
-
-    # Pre hnm input details
-    val16_pre_in = pre_hnm_dir / "valid16"
-    val17_pre_in = pre_hnm_dir / "valid17"
-    tst16_pre_in = pre_hnm_dir  / "test16"
-    tst17_pre_in = pre_hnm_dir  / "test17"
-
-    # Post hnm input details
-    val16_post_in = post_hnm_dir / "valid16"
-    val17_post_in = post_hnm_dir / "valid17"
-    tst16_post_in = post_hnm_dir / "test16"
-    tst17_post_in = post_hnm_dir / "test17"
-
-    # Pre hnm output details
-    val16_pre_out = pre_hnm_dir / patch_lev / "valid16"
-    val17_pre_out = pre_hnm_dir / patch_lev / "valid17"
-    val1617_pre_out = pre_hnm_dir / patch_lev / "valid1617"
-    tst16_pre_out = pre_hnm_dir / patch_lev / "test16"
-    tst17_pre_out = pre_hnm_dir / patch_lev / "test17"
-    tst1617_pre_out = pre_hnm_dir / patch_lev / "test1617"
-
-    # Post hnm output details
-    val16_post_out = post_hnm_dir / patch_lev / "valid16"
-    val17_post_out = post_hnm_dir / patch_lev / "valid17"
-    val1617_post_out = post_hnm_dir / patch_lev / "valid1617"
-    tst16_post_out = post_hnm_dir / patch_lev / "test16"
-    tst17_post_out = post_hnm_dir / patch_lev / "test17"
-    tst1617_post_out = post_hnm_dir / patch_lev / "test1617"
-
-    # read in the valid 16 pre results
-    valid_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), val16_pre_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # create patch level metrics for valid 16 pre
-    patch_level_metrics([valid_results_16_pre], val16_pre_out, ci=False)
-
-    # read in the valid 17 pre results
-    valid_results_17_pre = SlidesIndexResults.load_results_index(camelyon17.training(), val17_pre_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # select just the annotated slides
-    valid_results_17_pre_annotated = valid_results_17_pre.select_annotated()
-    # create patch level metrics for valid 17 pre
-    patch_level_metrics([valid_results_17_pre_annotated], val17_pre_out, ci=False)
-
-    # create patch level metrics for combined valid 16 & valid 17 pre
-    patch_level_metrics([valid_results_16_pre, valid_results_17_pre_annotated], val1617_pre_out, ci=False)
-
-
-    # read in the test 16 pre results
-    test_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), tst16_pre_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # create patch level metrics for test 16 pre
-    patch_level_metrics([test_results_16_pre], tst16_pre_out, ci=False)
-
-    # read in the test 17 pre results
-    test_results_17_pre = SlidesIndexResults.load_results_index(camelyon17.training(), tst17_pre_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # select just the annotated slides
-    test_results_17_pre_annotated = test_results_17_pre.select_annotated()
-    # create patch level metrics for test 17 pre
-    patch_level_metrics([test_results_17_pre_annotated], tst17_pre_out, ci=False)
-
-    # create patch level metrics for combined test 16 & test 17 pre
-    patch_level_metrics([test_results_16_pre, test_results_17_pre_annotated], tst1617_pre_out, ci=False)
-
-
-    # read in the valid 16 post results
-    valid_results_16_post = SlidesIndexResults.load_results_index(camelyon16.training(), val16_post_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # create patch level metrics for valid 16 post
-    patch_level_metrics([valid_results_16_post], val16_post_out, ci=False)
-
-    # read in the valid 17 post results
-    valid_results_17_post = SlidesIndexResults.load_results_index(camelyon17.training(), val17_post_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # select just the annotated slides
-    valid_results_17_post_annotated = valid_results_17_post.select_annotated()
-    # create patch level metrics for valid 17 post
-    patch_level_metrics([valid_results_17_post_annotated], val17_post_out, ci=False)
-
-    # create patch level metrics for combined valid 16 & valid 17 post
-    patch_level_metrics([valid_results_16_post, valid_results_17_post_annotated], val1617_post_out, ci=False)
-
-
-    # read in the test 16 post results
-    test_results_16_post = SlidesIndexResults.load_results_index(camelyon16.training(), tst16_post_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # create patch level metrics for test 16 post
-    patch_level_metrics([test_results_16_post], tst16_post_out, ci=False)
-
-    # read in the test 17 post results
-    test_results_17_post = SlidesIndexResults.load_results_index(camelyon17.training(), tst17_post_in,
-                                                                 results_dir_name, heatmap_dir_name)
-    # select just the annotated slides
-    test_results_17_post_annotated = test_results_17_post.select_annotated()
-    # create patch level metrics for test 17 post
-    patch_level_metrics([test_results_17_post_annotated], tst17_post_out, ci=False)
-
-    # create patch level metrics for combined test 16 & test 17 post
-    patch_level_metrics([test_results_16_post, test_results_17_post_annotated], tst1617_post_out, ci=False)
-
+    patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training())
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing())
+    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training())
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing())
 
 
 def calculate_lesion_level_results() -> None:
