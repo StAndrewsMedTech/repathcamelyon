@@ -18,6 +18,7 @@ from repath.patch_classification.models.simple import Backbone
 from repath.postprocess.slide_dataset import SlideDataset
 from repath.postprocess.prediction import inference_on_slide
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
+from repath.postproces.patch_level_results import patch_level_metrics
 
 from repath.utils.seeds import set_seed
 
@@ -73,6 +74,12 @@ Sections of the experiment
 
 
 def preprocesses() -> None:
+    """Performs preprocess steps:
+        -Getting train slides and their associated annotation files from folders. 
+        -Index to all the patches in the dataset
+        -split patches to train and validation sets
+        -saving the patches in respective folder
+    """
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
@@ -94,6 +101,8 @@ def preprocesses() -> None:
 
 
 def train_patch_classifier() -> None:
+    """Trains a patch classifier on train patches and validates on validation patches.
+    """
     set_seed(global_seed)
     # prepare our data
     batch_size = 128
@@ -119,6 +128,8 @@ def train_patch_classifier() -> None:
 
 
 def inference_on_train() -> None:
+    """Performs inference on train patches using the initial trained mode.
+    """
     set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
@@ -146,6 +157,8 @@ def inference_on_train() -> None:
 
 
 def create_hnm_patches() -> None:
+    """Creates extra patches doing hard negative mining.
+    """
     set_seed(global_seed)
 
     input_dir16 = experiment_root / "train_index16" / "pre_hnm_results"
@@ -172,6 +185,11 @@ def create_hnm_patches() -> None:
 
 
 def preprocess_for_testing() -> None:
+    """Performa all preprocess steps on testing datasets which includes:
+        - Getting test slides from respective folders.
+        -Index to all the patches in the dataset
+        -saving the patches in respective folder
+    """
     set_seed(global_seed)
 
     # index all the patches for the camelyon16 dataset
@@ -204,36 +222,36 @@ def inference_on_slides() -> None:
     heatmap_dir_name = "heatmaps"
 
     # Camelyon 16 details
-    outdir_val16 = experiment_root / "valid_index"
-    valid16 = SlidesIndex.load(camelyon16.training(), outdir_val16)
-    outdir_tst16 = experiment_root / "test_index"
-    test16 = SlidesIndex.load(camelyon16.testing(), outdir_tst16)
+    valid16_dir_in = experiment_root / "valid_index"
+    valid16 = SlidesIndex.load(camelyon16.training(), valid16_dir_in)
+    test16_dir_in = experiment_root / "test_index"
+    test16 = SlidesIndex.load(camelyon16.testing(), test16_dir_in)
 
     # Camelyon 17 details
-    outdir_val17 = experiment_root / "valid_index_17"
-    valid17 = SlidesIndex.load(camelyon17.training(), outdir_val17)
-    outdir_tst17 = experiment_root / "test_index_17"
-    test17 = SlidesIndex.load(camelyon17.testing(), outdir_tst17)
+    valid17_dir_in = experiment_root / "valid_index_17"
+    valid17 = SlidesIndex.load(camelyon17.training(), valid17_dir_in)
+    test17_dir_in = experiment_root / "test_index_17"
+    test17 = SlidesIndex.load(camelyon17.testing(), test17_dir_in)
 
     # Pre hnm details
     cp_path_pre_hnm = (experiment_root / "patch_model").glob("*.ckpt")[0]
     classifier_pre_hnm = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path_pre_hnm, model=Backbone()
     )
-    outdir_val16_pre = outdir_val16 / "pre_hnm_results"
-    outdir_val17_pre = outdir_val17 / "pre_hnm_results"
-    outdir_tst16_pre = outdir_tst16 / "pre_hnm_results"
-    outdir_tst17_pre = outdir_tst17 / "pre_hnm_results"
+    outdir_val16_pre = experiment_root / "pre_hnm_results" / "valid16"
+    outdir_val17_pre = experiment_root / "pre_hnm_results" / "valid17"
+    outdir_tst16_pre = experiment_root / "pre_hnm_results" / "test16"
+    outdir_tst17_pre = experiment_root / "pre_hnm_results" / "test17"
 
     # Post hnm details
-    cp_path_post_hnm = (experiment_root / "patch_model").glob("*.ckpt")[0]
+    cp_path_post_hnm = (experiment_root / "patch_model_hnm").glob("*.ckpt")[0]
     classifier_post_hnm = PatchClassifier.load_from_checkpoint(
         checkpoint_path=cp_path_post_hnm, model=Backbone()
     )
-    outdir_val16_post = outdir_val16 / "post_hnm_results"
-    outdir_val17_post = outdir_val17 / "post_hnm_results"
-    outdir_tst16_post = outdir_tst16 / "post_hnm_results"
-    outdir_tst17_post = outdir_tst17 / "post_hnm_results"
+    outdir_val16_post = experiment_root / "post_hnm_results" / "valid16"
+    outdir_val17_post = experiment_root / "post_hnm_results" / "valid17"
+    outdir_tst16_post = experiment_root / "post_hnm_results" / "test16"
+    outdir_tst17_post = experiment_root / "post_hnm_results" / "test17"
 
     # pre hnm results
     valid_results_16_pre = SlidesIndexResults.predict_dataset(valid16, classifier_pre_hnm, batsz, nwork,
@@ -265,35 +283,45 @@ def inference_on_slides() -> None:
 
 
 def calculate_patch_level_results() -> None:
+    def patch_dataset_function(modelname: str, splitname: str, dataset16: SlideDataset, dataset17: SlideDataset):
+        # define strings for model and split
+        model_dir_name = modelname + '_results'
+        splitname16 = splitname + '16'
+        splitname17 = splitname + '17'
+        splitname1617 = splitname + '1617'
+        results_out_name = "patch_summaries"
+        results_in_name = "results"
+        heatmap_in_name = "heatmaps"
+
+        # set paths for model and split
+        model_dir = experiment_root / model_dir_name
+        splitdirin16 = model_dir / splitname16
+        splitdirin17 = model_dir / splitname17
+        splitdirout16 = model_dir / results_out_name / splitname16
+        splitdirout17 = model_dir / results_out_name / splitname17
+        splitdirout1617 = model_dir / results_out_name / splitname1617
+
+        # read in predictions
+        split_results_16 = SlidesIndexResults.load_results_index(dataset16, splitdirin16,
+                                                                 results_in_name, heatmap_in_name)
+        split_results_17 = SlidesIndexResults.load_results_index(dataset17, splitdirin17,
+                                                                 results_in_name, heatmap_in_name)
+        split_results_17_annotated = split_results_17.select_annotated()
+
+        # calculate patch level results
+        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname ' dataset'
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False)
+        title17 = experiment_name + ' experiment ' + modelname + ' model Camelyon 17 ' + splitname ' dataset'
+        patch_level_metrics([split_results_17], splitdirout17, title17, ci=False)
+        title1617 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 & 17 ' + splitname ' dataset'
+        patch_level_metrics([split_results_1617], splitdirout1617, title1617, ci=False)
+
     set_seed(global_seed)
 
-    results_dir_name = "results"
-    heatmap_dir_name = "heatmaps"
-
-    # Camelyon 16 details
-    outdir_val16 = experiment_root / "valid_index"
-    outdir_tst16 = experiment_root / "test_index"
-    # Camelyon 17 details
-    outdir_val17 = experiment_root / "valid_index_17"
-    outdir_tst17 = experiment_root / "test_index_17"
-
-    # Pre hnm details
-    outdir_val16_pre = outdir_val16 / "pre_hnm_results"
-    outdir_val17_pre = outdir_val17 / "pre_hnm_results"
-    outdir_tst16_pre = outdir_tst16 / "pre_hnm_results"
-    outdir_tst17_pre = outdir_tst17 / "pre_hnm_results"
-
-    # Post hnm details
-    outdir_val16_post = outdir_val16 / "post_hnm_results"
-    outdir_val17_post = outdir_val17 / "post_hnm_results"
-    outdir_tst16_post = outdir_tst16 / "post_hnm_results"
-    outdir_tst17_post = outdir_tst17 / "post_hnm_results"
-
-
-    valid_results_16_pre = SlidesIndexResults.load_results_index(camelyon16.training(), outdir_val16_pre,
-                                                                 results_dir_name, heatmap_dir_name)
-    valid_results_16_pre = valid_results_16_pre.as_combined()
-
+    patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
 
 
 def calculate_lesion_level_results() -> None:

@@ -292,7 +292,6 @@ def inference_on_valid() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-#slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name)
     train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
                                                          results_dir_name, heatmap_dir_name)
     train_results16.save_results_index()

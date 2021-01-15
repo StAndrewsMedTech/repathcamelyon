@@ -153,11 +153,3 @@ def split_camelyon17(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIn
 
     return train_index, valid_index
 
-
-def select_annotated(index: SlidesIndex) -> SlidesIndex:
-    annotated = [ps for ps in index if 'annotated' in ps.tags]
-<<<<<<< HEAD
-    return SlidesIndex(index.dataset, annotated
-=======
-    return SlidesIndex(index.dataset, annotated)
->>>>>>> 83b32fd22eabdf889c8992f75fabc4b8a784c149

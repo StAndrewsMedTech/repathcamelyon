@@ -46,6 +46,15 @@ class AnnotationSet:
         self.fill_label = fill_label
 
     def render(self, shape: Shape, factor: float) -> np.array:
+        """Renders associated annotation data into the image.
+
+        Args:
+            shape (Shape): A NamedTuple of (num_rows, num_cols)
+            factor (float): Scaling factor
+
+        Returns:
+            image (np.array): A scaled image with associated annotations
+        """
         annotations = sorted(
             self.annotations, key=lambda a: self.labels_order.index(a.label)
         )

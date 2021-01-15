@@ -37,11 +37,11 @@ def pre_re_curve(true, probabilities, pos_label, recall_levels):
 
 def plotROCCI(xvalues, yvalues, xcivalues, ycivalues, summary_value, summary_valueCI, title, xlabel, ylabel,
               x_axis_lim=None):
-    title_lab = f'{title}\n score = {round(summary_value, 4)}, (range {round(summary_valueCI[0, 0], 4)}, {round(summary_valueCI[1, 0], 4)})'
+    title_lab = f'{title}\n score = {round(summary_value, 4)}, (range {round(summary_valueCI[0], 4)}, {round(summary_valueCI[1], 4)})'
     fig = plt.figure()
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
-    fig.suptitle(title_lab, fontsize=10)
+    fig.suptitle(title_lab, fontsize=10, y=1.05)
     plt.plot(xvalues, yvalues, '-', color='#000000')
     plt.fill_between(x=xcivalues, y1=ycivalues[0, :], y2=ycivalues[1, :], facecolor='grey', alpha=0.5)
     xleft, xright = plt.xlim()
@@ -101,11 +101,12 @@ def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
     return ax
 
 
-def save_conf_mat_plot(cm_vec, labels, title, suffix, results_dir):
+def save_conf_mat_plot(cm, labels, title, results_dir):
     n_class = len(labels)
-    cm_all = np.reshape(np.array(cm_vec), (n_class, n_class))
+    cm_all = cm.loc['results', :].to_numpy()
+    cm_all = np.reshape(np.array(cm_all, dtype=np.int), (n_class, n_class))
     cm_out = conf_mat_plot_heatmap(cm_all, labels, title)
-    out_path = 'confidence_matrix_' + suffix + '.png'
+    out_path = 'confidence_matrix.png'
     cm_out.get_figure().savefig(results_dir / out_path)
 
 
@@ -130,7 +131,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
 
     for i in range(n_classes):
         for j in range(n_classes):
-            text_cm = '{} \n ({}, {})'.format(cm[i, j], int(ci_lw[i, j]), int(ci_hi[i, j]), '.')
+            text_cm = f'{cm[i, j]} \n ({int(ci_lw[i, j])}, \n {int(ci_hi[i, j])})'
             txt_color = [1, 1, 1] if color_mapping[i, j] > 100 else [0, 0, 0]
             ax.text(j, i, text_cm, ha="center", va="center", color=txt_color, fontsize=18)
             ax.axhline(i - .5, color='black', linewidth=1.0)
@@ -144,18 +145,19 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
     ax.set_yticks(np.arange(n_classes))
     ax.set_xticklabels(display_labels, fontsize=14)
     ax.set_yticklabels(display_labels, fontsize=16)
-    ax.set_title(title_in, fontsize=16)
+    ax.set_title(title_in, fontsize=16, y=1.05)
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
 
     ax.set_ylim((n_classes - 0.5, -0.5))
 
     return ax
 
-
-def save_conf_mat_plot_ci(cm_vec, ci_vec, labels, title, suffix, results_dir):
+def save_conf_mat_plot_ci(cm, labels, title, results_dir):
     n_class = len(labels)
-    cm_all = np.reshape(np.array(cm_vec), (n_class, n_class))
+    cm_all = cm.loc['results', :].to_numpy()
+    cm_all = np.reshape(np.array(cm_all, dtype=np.int), (n_class, n_class))
+    ci_vec = cm.loc[['ci_lower_bound', 'ci_upper_bound'], :].to_numpy()
     cm_out = conf_mat_plot_heatmap_CI(cm_all, ci_vec, labels, title)
-    out_path = 'confidence_matrix_with_ci_' + suffix + '.png'
+    out_path = 'confidence_matrix_with_ci.png'
     cm_out.get_figure().savefig(results_dir / out_path)
 

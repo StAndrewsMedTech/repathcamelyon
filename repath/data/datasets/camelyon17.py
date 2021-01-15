@@ -39,6 +39,11 @@ class Camelyon17(Dataset):
         return {"negative": 0, "itc": 1,  "macro": 2, "micro": 3}
 
 def training():
+    """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
+
+    Returns:
+        DataFrame (pd.DataFrame): Train data frame
+    """
     # set up the paths to the slides and annotations
     root = project_root() / "data" / "camelyon17" / "raw" / "training"
     annotations_dir = root / "lesion_annotations"
@@ -126,6 +131,11 @@ def training_small():
 
 
 def testing():
+    """ Generated a data-frame of slide_path, annotation_path, label and tags for test set.
+
+    Returns:
+        DataFrame (pd.DataFrame): Test set data frame.
+    """
     #path to the test slides
     root = project_root() / "data" / "camelyon17" / "raw" / "testing"
     test_slides_dir = root / "patients"

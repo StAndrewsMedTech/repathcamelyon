@@ -41,6 +41,11 @@ class PatchSet(Sequence):
         return self.patches_df.iloc[idx,]
 
     def summary(self) -> pd.DataFrame:
+        """Gives a summary of number of patches for each class as a dataframe.
+
+        Returns:
+            pd.DataFrame: A summary dataframe defining number of patches for each class
+        """
         by_label = self.patches_df.groupby("label").size()
         labels = {v: k for k, v in self.dataset.labels.items()}
         count_df = by_label.to_frame().T.rename(columns = labels)
@@ -61,6 +66,12 @@ class CombinedPatchSet(PatchSet):
         # columns of patches_df are x, y, label, slide_idx
 
     def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None) -> None:
+        """Saves patches after applying transforms to them 
+
+        Args:
+            output_dir (Path): The path to save the generated patches.
+            transforms (List[transforms.Compose], optional): The transforms to be applied to each patch. Defaults to None.
+        """
         for slide_idx, group in self.patches_df.groupby('slide_idx'):
             slide_path, _, _, _ = self.dataset[slide_idx]
             with self.dataset.slide_cls(slide_path) as slide:
@@ -107,11 +118,23 @@ class CombinedIndex(object):
 
     @classmethod
     def for_slide_indexes(cls, indexes: List['SlidesIndex']) -> 'CombinedIndex':
+        """Combine a list of SlideIndices as one SlideIndex.
+
+        Returns:
+            SlideIndex: A single SLideIndex which is the combination of all given SlideIndices.
+        """
         cps = [index.as_combined() for index in indexes]
         ci = cls(cps)
         return ci
 
     def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '') -> None:
+        """Saves patches after applying transforms to them for more than one datastes.
+
+        Args:
+            output_dir (Path): The path to save the patches.
+            transforms (List[transforms.Compose], optional): List of transforms to be applied to each patch. Defaults to None.
+            affix (str, optional): A string added to the name of the patch before saving it. Defaults to ''.
+        """
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
@@ -160,6 +183,17 @@ class SlidePatchSet(PatchSet):
 
     @classmethod
     def index_slide(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
+        """[summary]
+
+        Args:
+            slide_idx (int): Index of the slide
+            dataset (Dataset): An object that represents a set of slides and their annotations.
+            tissue_detector (TissueDetector): A method for segmenting tissue from non-tissue in an slide.
+            patch_finder (PatchFinder): 
+
+        Returns:
+            pathset: 
+        """
         slide_path, annotation_path, _, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
@@ -188,6 +222,11 @@ class SlidesIndex(Sequence):
 
     @classmethod
     def index_dataset(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'SlidesIndex':
+        """[summary]
+
+        Returns:
+            [type]: [description]
+        """
         patchsets = [SlidePatchSet.index_slide(idx, dataset, tissue_detector, patch_finder) for idx in range(len(dataset))]
         return cls(dataset, patchsets)
 
@@ -206,6 +245,11 @@ class SlidesIndex(Sequence):
         return self.patches[0].level
 
     def summary(self) -> pd.DataFrame:
+        """Creates a summary dataframe for patches.
+
+        Returns:
+            pd.DataFrame: [description]
+        """
         summaries = [p.summary() for p in self.patches]
         slide_path = [p.slide_path for p in self.patches]
         slide_label = [p.label for p in self.patches]
@@ -218,7 +262,12 @@ class SlidesIndex(Sequence):
         return rtn
 
     def as_combined(self) -> CombinedPatchSet:
-        # combine all patchsets into one
+        """combine all patchsets into one.
+
+        Returns:
+            CombinedPatchSet: A combined patchset of all patchsets.
+        """
+        
         frames = [ps.patches_df for ps in self.patches]
         slide_indexes = [[ps.slide_idx]*len(ps) for ps in self.patches]
         slide_indexes = list(chain(*slide_indexes))
@@ -227,6 +276,11 @@ class SlidesIndex(Sequence):
         return CombinedPatchSet(self.dataset, self.patch_size, self.level, patches_df)
 
     def save(self, output_dir: Path) -> None:
+        """Saves a csv file for each slide.
+
+        Args:
+            output_dir (Path): The path to save the csv file.
+        """
         columns = ['slide_idx', 'csv_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
         for ps in self.patches:

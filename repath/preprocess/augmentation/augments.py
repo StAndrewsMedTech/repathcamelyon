@@ -15,6 +15,15 @@ class FlipRotate(object):
         self.angle = angle
 
     def __call__(self, img):
+        """ Flips and then Rotates the image.
+        
+        Args:
+            img (Image): The input image 
+
+        Returns:
+            image (Image): flipped and rotated imagg.
+
+        """
         image = TF.hflip(img)
         image = TF.rotate(image, angle=self.angle)
         return image

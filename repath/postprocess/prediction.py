@@ -35,7 +35,7 @@ def evaluate_loop_dp(model, device, loader, num_classes):
     return prob_out
 
 
-def evaluate_loop_threaded(model, device, loader, num_classes):
+def evaluate_on_device(model, device, loader, num_classes):
 
     model.eval()
     model.to(device)
