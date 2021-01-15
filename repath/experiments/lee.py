@@ -84,6 +84,8 @@ Experiment step
 
 
 def preprocess_indexes() -> None:
+   """
+   """
     set_seed(global_seed)
     patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=256, stride=256)
 

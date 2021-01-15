@@ -6,6 +6,16 @@ from repath.data.annotations.annotation import Annotation
 
 
 def annotation_from_tag(tag: ET.Element, group_labels: Dict[str, str]) -> Annotation:
+    """ Gets annotation tags from XML data
+
+    Args:
+        tag (ET.Element): XML data
+        group_labels(Dict[str, str]): A dictionary of strings defining labels.
+
+    Returns:
+        Annotations tags such as name, type, label and vertices
+
+    """
     # get the attributes
     name = tag.attrib["Name"]
     group = tag.attrib["PartOfGroup"]
@@ -26,6 +36,16 @@ def annotation_from_tag(tag: ET.Element, group_labels: Dict[str, str]) -> Annota
 
 
 def load_annotations(xml_file_path: Path, group_labels: Dict[str, str]) -> List[Annotation]:
+    """Returns list of annotations in the .xml file
+
+    Args:
+        xml_file_path (Path) : Path to the annotation file
+        group_labels (Dict[str, str])):  A dictionary of strings defining labels in the annotation file
+     
+    Returns:
+        List[Annotation]: List of annotations
+
+    """
     # if the path is empty or a dir then return an empty annotations list
     # TODO: Make sure this requirement is stated in the requirements for
     # load_annotations functions
