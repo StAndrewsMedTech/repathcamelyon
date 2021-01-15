@@ -7,28 +7,31 @@ from repath.data.slides.slide import Region
 
 
 class SlideDataset(Dataset):
-    def __init__(self, patchset: 'SlidePatchSet', transform=None) -> None:
-        #def to_sample(p: tuple) -> Tuple[Region, Image]:
-        #    region = Region.patch(p.x, p.y, patchset.patch_size, patchset.level)
-        #    image = slide.read_region(region)
-        #    return region, image
-
-        def to_patch(p: tuple) -> Image:
-            region = Region.patch(p.x, p.y, patchset.patch_size, patchset.level)
-            image = slide.read_region(region)
-            image = image.convert('RGB')
-            return image
-        
+    def __init__(self, ps: PatchSet, transform = None) -> None:
+        super().__init__()
+        self.ps = ps
+        self.slide = ps.dataset.slide_cls(ps.abs_slide_path)
         self.transform = transform
-        with patchset.open_slide() as slide:
-            # self.samples = [to_sample(p) for p in patchset]
-            self.samples = [(to_patch(p), p.label) for p in patchset]
+
+    def open_slide(self):
+        self.slide.open()
+
+    def close_slide(self):
+        self.slide.close()
+
+    def to_patch(self, p: tuple) -> Image:
+        region = Region.patch(p.x, p.y, self.ps.patch_size, self.ps.level)
+        image = self.slide.read_region(region)
+        image = image.convert('RGB')
+        return image
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.ps)
 
     def __getitem__(self, idx):
-        image, label = self.samples[idx]
+        patch_info = self.ps[idx]
+        image = self.to_patch(patch_info)
+        label = patch_info.label
         if self.transform is not None:
             image = self.transform(image)
         return image, label

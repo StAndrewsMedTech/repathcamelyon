@@ -271,3 +271,32 @@ def retrain_patch_classifier_hnm() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
                          logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+def inference_on_valid() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "valid16"
+    output_dir17 = experiment_root / "post_hnm_results" / "valid17"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
+    train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
+
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+#slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name)
+    train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
+                                                         results_dir_name, heatmap_dir_name)
+    train_results16.save_results_index()
+
+    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, transform, 128, output_dir17,
+                                                         results_dir_name, heatmap_dir_name)
+    train_results17.save_results_index()
