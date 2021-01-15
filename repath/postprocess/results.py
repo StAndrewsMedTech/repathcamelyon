@@ -109,6 +109,23 @@ class SlidesIndexResults(SlidesIndex):
             just_patch_classes = remove_item_from_dict(ps.dataset.labels, "background")
             num_classes = len(just_patch_classes)
             probs_out = evaluate_on_device(model, device, test_loader, num_classes)
+            ntransforms = 1
+            npreds = int(len(dataset) * ntransforms)
+            probs_out = probs_out[0:npreds, :]
+
+            ''' - TODO: ADD IN FOR MULTIPLE TRANSFORMS
+            if ntransforms > 1:
+                prob_rows = probabilities.shape[0]
+                prob_rows = int(prob_rows / ntransforms)
+                probabilities_reshape = np.empty((prob_rows, num_classes))
+                for cl in num_classes:
+                    class_probs = probabilities[:, cl]
+                    class_probs = np.reshape(class_probs, (ntransforms, prob_rows)).T
+                    class_probs = np.mean(class_probs, axis=1)
+                    probabilities_reshape[:, cl] = class_probs
+                probabilities = probabilities_reshape
+            '''
+
             probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
             probs_df = pd.concat((ps.patches_df, probs_df), axis=1)
             dataset.close_slide()
