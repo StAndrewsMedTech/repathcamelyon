@@ -327,32 +327,29 @@ def calculate_patch_level_results() -> None:
 def calculate_lesion_level_results() -> None:
     set_seed(global_seed)
 
-    results_pre_hnm = experiment_root / "valid_index" / "pre_hnm_results"
-    results_post_hnm = experiment_root / "valid_index" / "post_hnm_results"
+    resultsin_pre = experiment_root / "pre_hnm_results" / "valid_index" / "results"
+    resultsin_post = experiment_root / "post_hnm_results" / "valid_index" / "results"
 
-    valid_results_pre = SlidesIndexResults.load(camelyon16.training(), results_pre_hnm)
-    valid_results_post = SlidesIndexResults.load(camelyon16.training(), results_pre_hnm)
+    results_out_pre = experiment_root / "pre_hnm_results" / "lesion_results"
+    results_out_post = experiment_root / "post_hnm_results" / "lesion_results"
 
-    lesions_all_slides = pd.DataFrame(columns=["prob_score", "centre_row", "centre_col", "pixels", "filename"])
+    mask_dir = project_root() / 'camelyon16' / ''
 
-    for result_pre, result_post in zip(valid_results_pre, valid_results_post):
-        heatmap_pre = result_pre.to_heatmap
-        heatmap_post = result_post.to_heatmap
-        lesion_labelled_image = ConnectedComponents(0.9).segment(heatmap_pre)
-        lesions_out = LesionFinderWang().find_lesions(heatmap_pre, heatmap_post, lesion_labelled_image)
-        lesions_out["filename"] = result_pre.slide_path.stem
+    title_pre = experiment_name + " experiment, pre hnm model, Camelyon 16 valid dataset"
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
 
-        lesions_all_slides = pd.concat((lesions_all_slides, lesions_out), axis=0, ignore_index=True)
+    valid_results_pre = SlidesIndexResults.load(camelyon16.training(), resultsin_pre)
+    valid_results_post = SlidesIndexResults.load(camelyon16.training(), resultsin_post)
 
-    froc_curve, froc = evaluate_froc(paper.mask_dir, lesions_all_slides, 5, 0.243)
-    froc_curve.to_csv(results_dir / 'froc_curve.csv', index=False)
-    froc_plot = plotROC(froc_curve.total_FPs, froc_curve.total_sensitivity, froc,
-                        "Free Receiver Operating Characteristic Curve for Lesion Detection",
-                        "Average False Positives", "Metastatis Detection Sensitivity", [0, 8])
-    froc_plot.savefig(results_dir / 'froc_curve.png')
+    # wang example need both pre and post
+    lesion_finder = LesionFinderWang(mask_dir)
+    lesion_finder.calc_lesion_metrics(valid_results_pre, valid_results_post, results_out_post, title_post)
 
-# using the slide sampling validation set, predict a probability for every patch to create a heat map
+    # lee example can do for either pre or post
+    lesion_finder = LesionFinderLee(mask_dir)
+    lesion_finder.calc_lesion_metrics(valid_results_pre, results_out_pre, title_pre)
+    lesion_finder.calc_lesion_metrics(valid_results_post, results_out_post, title_post)
 
-# there are patch results (can use slides and patches sets), slide results, lesion level results, patient level results
+
 
 steps = [preprocessing, patch_training]
