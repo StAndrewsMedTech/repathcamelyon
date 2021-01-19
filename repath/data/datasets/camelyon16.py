@@ -98,17 +98,17 @@ def testing():
     #get the slide namme
     slide_names = []
     for path in slide_paths:
-    head, tail = os.path.split(path)
-    slide_names.append(tail.split('.')[0])
+        head, tail = os.path.split(path)
+        slide_names.append(tail.split('.')[0])
 
     #search for slides with annotations, add the annotation path if it exists else add empty string
     slides_annotations_paths = []
     for name in slide_names:
-    a_path = ""
-    for anno_path in annotation_paths:
-        if  name in str(anno_path):
-            a_path = anno_path
-    slides_annotations_paths.append(a_path)
+        a_path = ""
+        for anno_path in annotation_paths:
+            if  name in str(anno_path):
+                a_path = anno_path
+        slides_annotations_paths.append(a_path)
     
     #get the slide labels by reading the csv file
     csv_path = root / 'reference.csv'
@@ -118,8 +118,8 @@ def testing():
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
     df["slide"] = slide_paths 
-    df["annotation"] = annotation_paths + ["" for _ in range(len(normal_slide_paths))]
-    df["label"] = 
+    df["annotation"] = slides_annotations_paths
+    df["label"] = slide_labels
     df["tags"] = ""
 
     return Camelyon16(root, df)
