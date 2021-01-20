@@ -7,7 +7,7 @@ def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=N
     fig = plt.figure()
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
-    fig.suptitle(title_lab, fontsize=10)
+    fig.suptitle(title_lab, fontsize=10, y=1.05)
     plt.plot(xvalues, yvalues, '-', color='#000000')
     xleft, xright = plt.xlim()
     if x_axis_lim is not None:

@@ -5,7 +5,7 @@ import pandas as pd
 from skimage.measure import label
 from sklearn.cluster import DBSCAN
 
-from src.utils.convert import to_frame_with_locations
+from repath.utils.convert import to_frame_with_locations
 
 
 class InstanceSegmentor(ABC):

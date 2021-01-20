@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from math import ceil
 from repath.utils.geometry import Size
 from typing import Dict, Tuple
 from random import randint
@@ -88,19 +89,13 @@ class GridPatchFinder(PatchFinder):
         # for each patch, specify a transform
         df = self.apply_transforms(df)
 
+        # calculate amount to subtract from top left for border and jitter
+        subtract_top_left = ceil(self.border / 2) + self.jitter
+
         # for each row, add the border
-        df['x'] = np.subtract(df['x'], self.border)
-        df['y'] = np.subtract(df['y'], self.border)
-        self.patch_size = self.patch_size + (self.border*2)
-
-        if self.jitter != 0:
-
-            def jitter(val: int) -> int:
-                val = val - randint(0, self.jitter)
-                return np.maximum(val, 0)  # TODO: This is broken.
-
-            df["x"] = df["x"].apply(jitter)
-            df["y"] = df["y"].apply(jitter)
+        df['x'] = np.subtract(df['x'], subtract_top_left)
+        df['y'] = np.subtract(df['y'], subtract_top_left)
+        output_patch_size = self.patch_size + (self.border + self.jitter)
 
         # remove the background
         if self.remove_background:
@@ -109,11 +104,11 @@ class GridPatchFinder(PatchFinder):
         # clip the patch coordinates to the slide dimensions
         df['x'] = np.maximum(df['x'], 0)
         df['y'] = np.maximum(df['y'], 0)
-        df['x'] = np.minimum(df['x'], slide_shape.width - self.patch_size)
-        df['y'] = np.minimum(df['y'], slide_shape.height - self.patch_size)
+        df['x'] = np.minimum(df['x'], slide_shape.width - output_patch_size)
+        df['y'] = np.minimum(df['y'], slide_shape.height - output_patch_size)
 
         # return the index and the data required to extract the patches later
-        return df, self.patch_level, self.patch_size
+        return df, self.patch_level, output_patch_size
 
     def labels_level(self):
         raise self.labels_level

@@ -29,6 +29,7 @@ def pool2d(A, kernel_size, stride, padding, pool_mode="max"):
         shape=output_shape + kernel_size,
         strides=(stride * A.strides[0], stride * A.strides[1]) + A.strides,
     )
+
     A_w = A_w.reshape(-1, *kernel_size)
 
     # Return the result of pooling

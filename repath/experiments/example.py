@@ -18,7 +18,9 @@ from repath.patch_classification.models.simple import Backbone
 from repath.postprocess.slide_dataset import SlideDataset
 from repath.postprocess.prediction import inference_on_slide
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
-from repath.postproces.patch_level_results import patch_level_metrics
+from repath.postprocess.patch_level_results import patch_level_metrics
+from repath.postprocess.find_lesions import LesionFinderWang, LesionFinderLee
+
 
 from repath.utils.seeds import set_seed
 

@@ -1,3 +1,4 @@
+from math import ceil
 from multiprocessing import Pool
 from itertools import cycle
 from collections import namedtuple
@@ -18,17 +19,31 @@ from repath.utils.convert import remove_item_from_dict
 
 
 class SlidePatchSetResults(SlidePatchSet):
-    def __init__(self, slide_idx: int, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame) -> None:
+    def __init__(self, slide_idx: int, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame, 
+                 border: int = 0, jitter: int = 0) -> None:
         super().__init__(slide_idx, dataset, patch_size, level, patches_df)
         abs_slide_path, self.annotation_path, self.label, self.tags = dataset[slide_idx]
         self.slide_path = dataset.to_rel_path(abs_slide_path)
+        self.border = border
+        self.jitter = jitter
 
     def to_heatmap(self, class_name: str) -> np.array:
         self.patches_df.columns = [colname.lower() for colname in self.patches_df.columns]
         class_name = class_name.lower()
 
-        self.patches_df['column'] = np.divide(self.patches_df.x, self.patch_size)
-        self.patches_df['row'] = np.divide(self.patches_df.y, self.patch_size)
+        # amount to add to find top left
+        add_top_left = ceil(self.border / 2) + self.jitter
+
+        # find top left positions without border and jitter
+        top_x = np.add(self.patches_df.x, add_top_left)
+        left_y = np.add(self.patches_df.y, add_top_left)
+
+        # find core patch size
+        base_patch_size = self.patch_size - self.border
+
+        # remove border and convert to column, row
+        self.patches_df['column'] = np.divide(top_x, base_patch_size)
+        self.patches_df['row'] = np.divide(left_y, base_patch_size)
 
         max_rows = int(np.max(self.patches_df.row)) + 1
         max_cols = int(np.max(self.patches_df.column)) + 1
@@ -87,11 +102,11 @@ class SlidesIndexResults(SlidesIndex):
         index_df.to_csv(self.output_dir / 'results_index.csv', index=False)
 
     @classmethod
-    def load_results_index(cls, dataset, input_dir, results_dir_name, heatmap_dir_name):
+    def load_results_index(cls, dataset, input_dir, results_dir_name, heatmap_dir_name, border=0, jitter=0):
         def patchset_from_row(r: namedtuple) -> SlidePatchSet:
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSetResults(int(r.slide_idx), dataset, int(r.patch_size),
-                                 int(r.level), patches_df)
+                                 int(r.level), patches_df, border, jitter)
 
         index = pd.read_csv(input_dir / 'results_index.csv')
         patches = [patchset_from_row(r) for r in index.itertuples()]
@@ -99,7 +114,8 @@ class SlidesIndexResults(SlidesIndex):
         return rtn
 
     @classmethod
-    def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name) -> 'SlidesIndexResults':
+    def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
+                border=0, jitter=0) -> 'SlidesIndexResults':
         def predict_slide(args: Tuple[SlidePatchSet, int]) -> SlidePatchSetResults:
             ps, device_idx = args
             dataset = SlideDataset(ps, transform)
@@ -129,7 +145,7 @@ class SlidesIndexResults(SlidesIndex):
             probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
             probs_df = pd.concat((ps.patches_df, probs_df), axis=1)
             dataset.close_slide()
-            results = SlidePatchSetResults(ps.slide_idx, ps.dataset, ps.patch_size, ps.level, probs_df)
+            results = SlidePatchSetResults(ps.slide_idx, ps.dataset, ps.patch_size, ps.level, probs_df, border, jitter)
             results.save_csv(output_dir / results_dir_name / results.slide_path.parents[0])
             results.save_heatmap(output_dir / heatmap_dir_name / results.slide_path.parents[0])
             return results

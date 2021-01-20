@@ -27,6 +27,8 @@ Global stuff
 experiment_name = "liu"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorOTSU()
+patch_border = 171
+patch_jitter = 8
 
 global_seed = 123
 
@@ -94,8 +96,9 @@ def preprocess_indexes() -> None:
     # index all the patches for the camelyon16 dataset
     train_data = camelyon16.training()
     apply_transforms = LiuTransform(label=2, num_transforms=8)
-    patch_finder = GridPatchFinder(labels_level=7, patch_level=0, patch_size=128, stride=128, 
-                                   border=171, jitter=8, apply_transforms=apply_transforms)
+    patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=128, stride=128, 
+                                   border=patch_border, jitter=patch_jitter, 
+                                   apply_transforms=apply_transforms)
     train_patches = SlidesIndex.index_dataset(train_data, tissue_detector, patch_finder)
 
     # do the train validate split
@@ -128,6 +131,7 @@ def train_patch_classifier() -> None:
     set_seed(global_seed)
     # transforms
     transform = Compose([
+        RandomCrop((299, 299)),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])

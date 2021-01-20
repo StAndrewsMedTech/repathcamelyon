@@ -124,6 +124,36 @@ def computeFROC_new(FP_list, TP_list, total_tumor, n_imgs):
     return total_FPs, total_sensitivity
 
 
+def computeFROC(FROC_data):
+    """Generates the data required for plotting the FROC curve
+    
+    Args:
+        FROC_data:      Contains the list of TPs, FPs, number of tumors in each image
+         
+    Returns:
+        total_FPs:      A list containing the average number of false positives
+        per image for different thresholds
+        
+        total_sensitivity:  A list containig overall sensitivity of the system
+        for different thresholds
+    """
+
+    unlisted_FPs = [item for sublist in FROC_data[1] for item in sublist]
+    unlisted_TPs = [item for sublist in FROC_data[2] for item in sublist]
+
+    total_FPs, total_TPs = [], []
+    all_probs = sorted(set(unlisted_FPs + unlisted_TPs))
+    for Thresh in all_probs[1:]:
+        total_FPs.append((np.asarray(unlisted_FPs) >= Thresh).sum())
+        total_TPs.append((np.asarray(unlisted_TPs) >= Thresh).sum())
+    total_FPs.append(0)
+    total_TPs.append(0)
+    total_FPs = np.asarray(total_FPs)/float(len(FROC_data[0]))
+    total_sensitivity = np.asarray(total_TPs)/float(sum(FROC_data[3]))
+    return  total_FPs, total_sensitivity
+
+
+
 def calc_average_froc(total_FPs, total_sensitivity):
     output = np.column_stack((total_FPs, total_sensitivity))
     FPPI_vals = [8, 4, 2, 1, 0.5, 0.25]
@@ -152,13 +182,13 @@ def evaluate_froc(mask_dir: Path, lesions: pd.DataFrame,
     n_tumor_in = 0
     caseNum = 0
     for case in result_file_list:
-        lessions_slide = lesions[lesions.filename == case]
-        lessions_slide = lessions_slide[lessions_slide.pixels > 0]
-        n_tumor_in += lessions_slide.shape[0]
-        Probs = lessions_slide.prob_score.to_list()
-        Xcorr = lessions_slide.centre_col.astype(int).to_list()
-        Ycorr = lessions_slide.centre_row.astype(int).to_list()
-        # test files are named test convert name to tumor so names matcg
+        lesions_slide = lesions[lesions.filename == case]
+        lesions_slide = lesions_slide[lesions_slide.pixels > 0]
+        n_tumor_in += lesions_slide.shape[0]
+        Probs = lesions_slide.prob_score.to_list()
+        Xcorr = lesions_slide.centre_x.astype(int).to_list()
+        Ycorr = lesions_slide.centre_y.astype(int).to_list()
+        # test files are named test convert name to tumor so names match
         if case[0:4] == 'test':
             case = 'tumor' + case[4:]
         file_exists = Path(os.path.join(mask_dir, case) + '_evaluation_mask.png').is_file()
@@ -184,7 +214,6 @@ def evaluate_froc(mask_dir: Path, lesions: pd.DataFrame,
 
     # Compute FROC curve
     total_FPs, total_sensitivity = computeFROC_new(FP_list, TP_list, total_tumor, n_imgs)
-
     # combine into array and calcuate average
     output, average_sens = calc_average_froc(total_FPs, total_sensitivity)
     output = pd.DataFrame(output, columns=['total_FPs', 'total_sensitivity'])
