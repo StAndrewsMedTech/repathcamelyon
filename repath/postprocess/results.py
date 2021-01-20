@@ -118,42 +118,42 @@ class SlidesIndexResults(SlidesIndex):
                 border=0, jitter=0) -> 'SlidesIndexResults':
         def predict_slide(args: Tuple[SlidePatchSet, int]) -> SlidePatchSetResults:
             ps, device_idx = args
-            dataset = SlideDataset(ps, transform)
-            device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
-            dataset.open_slide()
-            test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size)
-            just_patch_classes = remove_item_from_dict(ps.dataset.labels, "background")
-            num_classes = len(just_patch_classes)
-            probs_out = evaluate_on_device(model, device, test_loader, num_classes)
-            ntransforms = 1
-            npreds = int(len(dataset) * ntransforms)
-            probs_out = probs_out[0:npreds, :]
+        #     dataset = SlideDataset(ps, transform)
+        #     device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
+        #     dataset.open_slide()
+        #     test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size)
+        #     just_patch_classes = remove_item_from_dict(ps.dataset.labels, "background")
+        #     num_classes = len(just_patch_classes)
+        #     probs_out = evaluate_on_device(model, device, test_loader, num_classes)
+        #     ntransforms = 1
+        #     npreds = int(len(dataset) * ntransforms)
+        #     probs_out = probs_out[0:npreds, :]
 
-            ''' - TODO: ADD IN FOR MULTIPLE TRANSFORMS
-            if ntransforms > 1:
-                prob_rows = probabilities.shape[0]
-                prob_rows = int(prob_rows / ntransforms)
-                probabilities_reshape = np.empty((prob_rows, num_classes))
-                for cl in num_classes:
-                    class_probs = probabilities[:, cl]
-                    class_probs = np.reshape(class_probs, (ntransforms, prob_rows)).T
-                    class_probs = np.mean(class_probs, axis=1)
-                    probabilities_reshape[:, cl] = class_probs
-                probabilities = probabilities_reshape
-            '''
+        #     ''' - TODO: ADD IN FOR MULTIPLE TRANSFORMS
+        #     if ntransforms > 1:
+        #         prob_rows = probabilities.shape[0]
+        #         prob_rows = int(prob_rows / ntransforms)
+        #         probabilities_reshape = np.empty((prob_rows, num_classes))
+        #         for cl in num_classes:
+        #             class_probs = probabilities[:, cl]
+        #             class_probs = np.reshape(class_probs, (ntransforms, prob_rows)).T
+        #             class_probs = np.mean(class_probs, axis=1)
+        #             probabilities_reshape[:, cl] = class_probs
+        #         probabilities = probabilities_reshape
+        #     '''
 
-            probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
-            probs_df = pd.concat((ps.patches_df, probs_df), axis=1)
-            dataset.close_slide()
-            results = SlidePatchSetResults(ps.slide_idx, ps.dataset, ps.patch_size, ps.level, probs_df, border, jitter)
-            results.save_csv(output_dir / results_dir_name / results.slide_path.parents[0])
-            results.save_heatmap(output_dir / heatmap_dir_name / results.slide_path.parents[0])
-            return results
+        #     probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
+        #     probs_df = pd.concat((ps.patches_df, probs_df), axis=1)
+        #     dataset.close_slide()
+        #     results = SlidePatchSetResults(ps.slide_idx, ps.dataset, ps.patch_size, ps.level, probs_df, border, jitter)
+        #     results.save_csv(output_dir / results_dir_name / results.slide_path.parents[0])
+        #     results.save_heatmap(output_dir / heatmap_dir_name / results.slide_path.parents[0])
+        #     return results
 
-        # spawn a process to predict for each slide
-        ngpus = torch.cuda.device_count()
-        slides = zip(slide_index, cycle(range(ngpus)))
-        pool = Pool()
-        results = pool.map(predict_slide, slides)
-        pool.join()
-        return cls(slide_index.dataset,results, output_dir, results_dir_name, heatmap_dir_name)
+        # # spawn a process to predict for each slide
+        # ngpus = torch.cuda.device_count()
+        # slides = zip(slide_index, cycle(range(ngpus)))
+        # pool = Pool()
+        # results = pool.map(predict_slide, slides)
+        # pool.join()
+        # return cls(slide_index.dataset,results, output_dir, results_dir_name, heatmap_dir_name)
