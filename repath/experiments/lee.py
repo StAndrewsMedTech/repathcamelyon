@@ -284,8 +284,8 @@ def inference_on_valid() -> None:
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
-    train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
+    valid16 = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index16")
+    valid17 = SlidesIndex.load(camelyon17.training(), experiment_root / "valid_index17")
 
     transform = Compose([
         RandomCrop((240, 240)),
@@ -293,10 +293,10 @@ def inference_on_valid() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
+    valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
                                                          results_dir_name, heatmap_dir_name)
-    train_results16.save_results_index()
+    valid_results16.save_results_index()
 
-    train_results17 = SlidesIndexResults.predict_dataset(train17, classifier, transform, 128, output_dir17,
+    valid_results17 = SlidesIndexResults.predict_dataset(valid17, classifier, transform, 128, output_dir17,
                                                          results_dir_name, heatmap_dir_name)
-    train_results17.save_results_index()
+    valid_results17.save_results_index()
