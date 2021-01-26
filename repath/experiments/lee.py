@@ -287,6 +287,9 @@ def inference_on_valid() -> None:
     valid16 = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index16")
     valid17 = SlidesIndex.load(camelyon17.training(), experiment_root / "valid_index17")
 
+    valid16 = valid16[0:8]
+    valid17 = valid17[0:8]
+
     transform = Compose([
         RandomCrop((240, 240)),
         ToTensor(),
@@ -297,6 +300,6 @@ def inference_on_valid() -> None:
                                                          results_dir_name, heatmap_dir_name)
     valid_results16.save_results_index()
 
-    valid_results17 = SlidesIndexResults.predict_dataset(valid17, classifier, transform, 128, output_dir17,
+    valid_results17 = SlidesIndexResults.predict(valid17, classifier, transform, 128, output_dir17,
                                                          results_dir_name, heatmap_dir_name)
     valid_results17.save_results_index()
