@@ -35,7 +35,7 @@ def evaluate_on_multiple_devices(model, device, loader, num_classes):
     return prob_out
 
 
-def evaluate_on_device(model, device, loader, num_classes):
+def evaluate_on_device(model, device, loader, num_classes, device_idx):
 
     model.eval()
     model.to(device)
@@ -58,6 +58,6 @@ def evaluate_on_device(model, device, loader, num_classes):
             prob_out[start:end, :] = pred_prob
 
             if idx % 100 == 0:
-                print('Batch {} of {}'.format(idx, len(loader)))
+                print('Batch {} of {} on GPU {}'.format(idx, len(loader), device_idx))
 
     return prob_out
