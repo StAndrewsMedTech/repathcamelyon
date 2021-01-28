@@ -56,8 +56,8 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
         probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
         dataset.close_slide()
         results = SlidePatchSetResults(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df, border, jitter)
-        results.save_csv(output_dir / results_dir_name / results.slide_path.parents[0])
-        results.save_heatmap(output_dir / heatmap_dir_name / results.slide_path.parents[0])
+        results.save_csv(output_dir / results_dir_name )
+        results.save_heatmap('tumor', output_dir / heatmap_dir_name)
         results_all.append(results)
     return results_all
    
