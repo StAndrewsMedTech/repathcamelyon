@@ -132,7 +132,9 @@ class SlidesIndexResults(SlidesIndex):
     def save(self):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
+        print("patches:", self.patches)
         for ps in self.patches:
+            print("ps:", ps)
             # save out the csv file for this slide
             csv_path = self.output_dir / self.results_dir_name / ps.slide_path.with_suffix('.csv')
             png_path = self.output_dir / self.heatmap_dir_name / ps.slide_path.with_suffix('.png')
@@ -178,5 +180,6 @@ class SlidesIndexResults(SlidesIndex):
         results = pool.map(predict_slide, slides)
         pool.close()
         pool.join()
+        results = [item for sublist in results for item in sublist]
         print("results: ", results)
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)

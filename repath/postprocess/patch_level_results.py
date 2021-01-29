@@ -120,8 +120,8 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
         # create confidence interval for precision recall curve
         precisions_ci = np.quantile(precisions1000, [0.025, 0.975], axis=0)
         # create dataframe with precision recall curve confidence interval
-        patch_curve_ci = pd.DataFrame(np.hstack((precisions_ci.T, np.reshape(recall_levels, (1001, 1)))),
-                                      columns=['patch_precisions_lower', 'patch_precisions_upper', 'patch_recalls'])
+        patch_curve_ci = pd.DataFrame(np.hstack((precisions_ci.T, np.reshape(recall_levels, (nrecall_levs, 1)))), 
+                                                 columns=['patch_precisions_lower', 'patch_precisions_upper', 'patch_recalls'])
         # write out precision recall curve confidence interval
         patch_curve_ci.to_csv(save_dir / 'patch_pr_curve_ci.csv', index=False)
 

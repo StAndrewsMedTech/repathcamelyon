@@ -31,6 +31,7 @@ def pre_re_curve(true, probabilities, pos_label, recall_levels):
     tns = np.subtract(np.subtract(total_vals, n_pos_pred), fns)
     precisions = np.divide(tps, np.add(tps, fps))
     recalls = np.divide(tps, np.add(tps, fns))
+    print(np.hstack((recalls, precisions))
     p1000 = np.interp(recall_levels, recalls, precisions)
     return p1000
 

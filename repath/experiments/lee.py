@@ -298,8 +298,9 @@ def inference_on_valid() -> None:
 
     valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
                                                          results_dir_name, heatmap_dir_name)
-    valid_results16.save_results_index()
+    print("valid_results16:", valid_results16)
+    valid_results16.save()
 
     valid_results17 = SlidesIndexResults.predict(valid17, classifier, transform, 128, output_dir17,
                                                          results_dir_name, heatmap_dir_name)
-    valid_results17.save_results_index()
+    valid_results17.save()
