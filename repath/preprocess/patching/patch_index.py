@@ -97,7 +97,8 @@ class CombinedPatchSet(PatchSet):
                     slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
                     patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
                     image_path = output_dir / label / patch_filename
-                    image.save(image_path)
+                    cv2.imwrite(str(image_path), np.array(image))
+                    # image.save(image_path)
 
 
 class CombinedIndex(object):
@@ -161,7 +162,8 @@ class CombinedIndex(object):
                         slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
                         patch_filename = slide_name_str + f"-{row.x}-{row.y}{affix}.png"
                         image_path = output_dir / label / patch_filename
-                        image.save(image_path)
+                        cv2.imwrite(str(image_path), np.array(image))
+                        # image.save(image_path)
 
 
 

@@ -99,7 +99,7 @@ class LesionFinder(ABC):
 
 class LesionFinderLee(LesionFinder):
     def find_slide_lesions(self, result: SlidePatchSetResults, posname: str = 'tumor') -> pd.DataFrame:
-        print(result_post.slide_path.stem)
+        print(result.slide_path.stem)
         # create heatmap from results 
         heatmap = result.to_heatmap(posname)
         assert heatmap.dtype == 'float' and np.max(heatmap) <= 1.0 and np.min(heatmap) >= 0.0, "Heatmap in wrong format"

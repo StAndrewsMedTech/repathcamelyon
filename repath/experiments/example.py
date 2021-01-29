@@ -20,6 +20,7 @@ from repath.postprocess.prediction import inference_on_slide
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.find_lesions import LesionFinderWang, LesionFinderLee
+from repath.postprocess.slide_level_metrics import SlideClassifierWang
 
 
 from repath.utils.seeds import set_seed
@@ -351,6 +352,28 @@ def calculate_lesion_level_results() -> None:
     lesion_finder = LesionFinderLee(mask_dir)
     lesion_finder.calc_lesion_metrics(valid_results_pre, results_out_pre, title_pre)
     lesion_finder.calc_lesion_metrics(valid_results_post, results_out_post, title_post)
+
+
+def calculate_slide_level_results() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    resultsin_post = experiment_root / "post_hnm_results" / "valid_index" / "results"
+
+    results_out_post = experiment_root / "post_hnm_results" / "slide_results"
+
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
+
+    valid_results_post = SlidesIndexResults.load(camelyon16.training(), resultsin_post, results_dir_name, heatmap_dir_name)
+
+    slide_classifier = SlideClassifierWang(results_out_post, camelyon16.training().slide_labels)
+    slide_classifier.calc_features(resultsin_post)
+    slide_classifier.predict_slide_level()
+    slide_classifer.calc_slide_metrics(title_post)
+
+    
 
 
 

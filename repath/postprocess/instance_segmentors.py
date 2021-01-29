@@ -31,7 +31,7 @@ class ConnectedComponents(InstanceSegmentor):
 
 
 class DBScan(InstanceSegmentor):
-    def __init__(self, threshold: float, eps: float = 3, min_samples: int = 20):
+    def __init__(self, threshold: float, eps: float = 5, min_samples: int = 10):
         self.threshold = threshold
         self.eps = eps
         self.min_samples = min_samples
@@ -56,7 +56,7 @@ class DBScan(InstanceSegmentor):
             return np.zeros(heatmap.shape)
 
         # Step2: feed array of points to DBSCAN
-        db = DBSCAN(self.eps, self.min_samples).fit(X)
+        db = DBSCAN(eps=self.eps, min_samples=self.min_samples).fit(X)
         core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
         core_samples_mask[db.core_sample_indices_] = True
         # get max label

@@ -82,7 +82,7 @@ class SlidesIndexResults(SlidesIndex):
         self.results_dir_name = results_dir_name
         self.heatmap_dir_name = heatmap_dir_name
 
-    def save_results_index(self):
+    def save(self):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
         for ps in self.patches:
@@ -102,7 +102,7 @@ class SlidesIndexResults(SlidesIndex):
         index_df.to_csv(self.output_dir / 'results_index.csv', index=False)
 
     @classmethod
-    def load_results_index(cls, dataset, input_dir, results_dir_name, heatmap_dir_name, border=0, jitter=0):
+    def load(cls, dataset, input_dir, results_dir_name, heatmap_dir_name, border=0, jitter=0):
         def patchset_from_row(r: namedtuple) -> SlidePatchSet:
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSetResults(int(r.slide_idx), dataset, int(r.patch_size),

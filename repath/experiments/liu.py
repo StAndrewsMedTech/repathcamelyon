@@ -33,8 +33,6 @@ patch_jitter = 8
 global_seed = 123
 
 
-
-
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
