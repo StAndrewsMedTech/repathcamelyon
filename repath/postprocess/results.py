@@ -60,7 +60,9 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
         results = SlidePatchSetResults(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df, border, jitter)
         results.save_csv(output_dir / results_dir_name )
         results.save_heatmap('tumor', output_dir / heatmap_dir_name)
+        print("results in predict:", results)
         results_all.append(results)
+    print("results all :", results_all)
     return results_all
    
 class SlidePatchSetResults(SlidePatchSet):
@@ -161,19 +163,20 @@ class SlidesIndexResults(SlidesIndex):
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
                 border=0, jitter=0) -> 'SlidesIndexResults':
-        #slide_index.patches = [slide_index[1:3],slide_index[4:6],slide_index[7:9],slide_index[10:12],
-        #                slide_index[13:15],slide_index[16:18],slide_index[19:21],slide_index[22:24]]
-        gpu_lists = [ [] for _ in range(ngpus) ]
-        while len(slide_index) > 0:
-            for n in range(ngpus):
-                gpu_lists[n].append(slide_index.patches.pop())
-        slide_index.patches = gpu_lists 
-        # spawn a process to predict for each slide
         ngpus = torch.cuda.device_count()
+        slide_index.patches = [slide_index[1:2],slide_index[4:5],slide_index[7:8],slide_index[10:11],
+                        slide_index[13:14],slide_index[16:17],slide_index[19:20],slide_index[22:23]]
+        #gpu_lists = [ [] for _ in range(ngpus) ]
+        #while len(slide_index) > 0:
+        #    for n in range(ngpus):
+        #        gpu_lists[n].append(slide_index.patches.pop())
+        #slide_index.patches = gpu_lists 
+        # spawn a process to predict for each slide
         slides = zip(slide_index, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size] * 
                         ngpus, [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, [heatmap_dir_name]*ngpus)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()
         pool.join()
+        print("results: ", results)
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)
