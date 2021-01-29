@@ -287,8 +287,8 @@ def inference_on_valid() -> None:
     valid16 = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index16")
     valid17 = SlidesIndex.load(camelyon17.training(), experiment_root / "valid_index17")
 
-    valid16 = valid16[0:32]
-    valid17 = valid17[0:32]
+    # valid16.patches = valid16[0:32]
+    # valid17.patches = valid17[0:32]
 
     transform = Compose([
         RandomCrop((240, 240)),
