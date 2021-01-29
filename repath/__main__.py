@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from click import group, version_option, command, argument
+from multiprocessing import  set_start_method
 
 import repath.experiments.wang as wang
 import repath.experiments.lee as lee
@@ -33,4 +34,6 @@ main.add_command(show)
 
 
 if __name__ == "__main__":
+    set_start_method('spawn')
     main()
+    
