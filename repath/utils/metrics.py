@@ -17,13 +17,13 @@ def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=N
     return plt
 
 
-def pre_re_curve(true, probabilities, pos_label, recall_levels):
+def binary_curves(true, probabilities, pos_label):
     sort_order = np.argsort(-probabilities)
     prob_order = probabilities[sort_order]
     true_order = true[sort_order]
     pos_vals = true_order == pos_label
     tps = np.cumsum(pos_vals)
-    n_pos_pred = list(range(len(probabilities)))
+    n_pos_pred = np.add(list(range(len(probabilities))), 1)
     fps = np.subtract(n_pos_pred, tps)
     total_pos = np.sum(pos_vals)
     fns = np.subtract(total_pos, tps)
@@ -31,9 +31,20 @@ def pre_re_curve(true, probabilities, pos_label, recall_levels):
     tns = np.subtract(np.subtract(total_vals, n_pos_pred), fns)
     precisions = np.divide(tps, np.add(tps, fps))
     recalls = np.divide(tps, np.add(tps, fns))
-    print(np.hstack((recalls, precisions))
+    fprs = np.divide(fps, np.add(tns, fps))
+    return precisions, recalls, fprs, prob_order
+
+
+def pre_re_curve(true, probabilities, pos_label, recall_levels):
+    precisions, recalls, fprs, po = binary_curves(true, probabilities, pos_label)
     p1000 = np.interp(recall_levels, recalls, precisions)
     return p1000
+
+
+def fpr_tpr_curve(true, probabilities, pos_label, recall_levels):
+    precisions, recalls, fprs, po = binary_curves(true, probabilities, pos_label)
+    f1000 = np.interp(recall_levels, recalls, fprs)
+    return f1000
 
 
 def plotROCCI(xvalues, yvalues, xcivalues, ycivalues, summary_value, summary_valueCI, title, xlabel, ylabel,

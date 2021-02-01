@@ -36,7 +36,7 @@ def evaluate_on_multiple_devices(model, device, loader, num_classes):
 
 
 def evaluate_on_device(model, device, loader, num_classes, device_idx):
-    print(f'device: {device}, current_device {torch.cuda.current_device()}')
+
     model.eval()
     model.to(device)
 
