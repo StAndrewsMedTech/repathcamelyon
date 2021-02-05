@@ -75,7 +75,7 @@ def conf_mat_raw(true, predicted, labels):
 
 
 def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8,6))
     n_classes = cm.shape[0]
     cmap = 'Greys'
 
@@ -103,7 +103,7 @@ def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
     ax.set_ylabel("True label", fontsize=16)
     ax.set_xticks(np.arange(n_classes))
     ax.set_yticks(np.arange(n_classes))
-    ax.set_xticklabels(display_labels, fontsize=14)
+    ax.set_xticklabels(display_labels, fontsize=16)
     ax.set_yticklabels(display_labels, fontsize=16)
     ax.set_title(title_in, fontsize=16)
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
@@ -123,7 +123,7 @@ def save_conf_mat_plot(cm, labels, title, results_dir):
 
 
 def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='true'):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8,6))
     n_classes = cm.shape[0]
     cmap = 'Greys'
 
@@ -145,7 +145,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
         for j in range(n_classes):
             text_cm = f'{cm[i, j]} \n ({int(ci_lw[i, j])}, \n {int(ci_hi[i, j])})'
             txt_color = [1, 1, 1] if color_mapping[i, j] > 100 else [0, 0, 0]
-            ax.text(j, i, text_cm, ha="center", va="center", color=txt_color, fontsize=18)
+            ax.text(j, i, text_cm, ha="center", va="center", color=txt_color, fontsize=16)
             ax.axhline(i - .5, color='black', linewidth=1.0)
             ax.axvline(j - .5, color='black', linewidth=1.0)
 
@@ -155,7 +155,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
     ax.set_ylabel("True label", fontsize=16)
     ax.set_xticks(np.arange(n_classes))
     ax.set_yticks(np.arange(n_classes))
-    ax.set_xticklabels(display_labels, fontsize=14)
+    ax.set_xticklabels(display_labels, fontsize=16)
     ax.set_yticklabels(display_labels, fontsize=16)
     ax.set_title(title_in, fontsize=16, y=1.05)
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)

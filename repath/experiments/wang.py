@@ -167,4 +167,28 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
+def inference_on_train() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
+    output_dir16 = experiment_root / "pre_hnm_results" / "train16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
+
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    #valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
+    #                                                     results_dir_name, heatmap_dir_name)
+    #valid_results16.save()
+    print("Valid17")
+    valid_results17 = SlidesIndexResults.predict(valid17, classifier, transform, 128, output_dir17,
+                                                         results_dir_name, heatmap_dir_name)
+    valid_results17.save()

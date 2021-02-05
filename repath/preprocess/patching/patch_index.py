@@ -1,5 +1,6 @@
 from collections import namedtuple
 from itertools import chain
+import os
 from pathlib import Path
 import threading
 from typing import List, Sequence
@@ -91,6 +92,9 @@ class CombinedPatchSet(PatchSet):
                     # ensure the output directory exists
                     output_subdir = output_dir / label
                     output_subdir.mkdir(parents=True, exist_ok=True)
+                    files_in_subdir = output_subdir.glob('*.png')
+                    for ff in files_in_subdir:
+                        os.remove(ff)
 
                     # write out the slide
                     rel_slide_path = self.dataset.to_rel_path(slide_path)
@@ -135,6 +139,19 @@ class CombinedIndex(object):
             transforms (List[transforms.Compose], optional): List of transforms to be applied to each patch. Defaults to None.
             affix (str, optional): A string added to the name of the patch before saving it. Defaults to ''.
         """
+        # check subdirectories exist and delete any existing patches
+        for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
+            # get the patch label as a string
+            labels_dict = remove_item_from_dict(self.datasets[cps_idx].labels, 'background')
+            labels = list(labels_dict.keys())
+            for lab in labels:
+                # ensure the output directory exists
+                output_subdir = output_dir / lab
+                output_subdir.mkdir(parents=True, exist_ok=True)
+                files_in_subdir = output_subdir.glob('*.png')
+                for ff in files_in_subdir:
+                    os.remove(ff)
+
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]

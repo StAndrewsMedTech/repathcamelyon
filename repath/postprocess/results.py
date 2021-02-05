@@ -28,9 +28,7 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
     si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name = args
     device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
     results_all = []
-    print('si:', si)
     for sps in si:
-        print('sps:', sps)
         dataset = SlideDataset(sps, transform)
         dataset.open_slide()
         test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size)
@@ -60,9 +58,7 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
         results = SlidePatchSetResults(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df, border, jitter)
         results.save_csv(output_dir / results_dir_name )
         results.save_heatmap('tumor', output_dir / heatmap_dir_name)
-        print("results in predict:", results)
         results_all.append(results)
-    print("results all :", results_all)
     return results_all
    
 class SlidePatchSetResults(SlidePatchSet):
@@ -107,13 +103,15 @@ class SlidePatchSetResults(SlidePatchSet):
 
     def save_csv(self, output_dir):
         # save out the patches csv file for this slide
-        output_dir.mkdir(parents=True, exist_ok=True)
+        file_path = output_dir / self.slide_path.parents[0]
+        file_path.mkdir(parents=True, exist_ok=True)
         csv_path = output_dir / self.slide_path.with_suffix('.csv')
         self.patches_df.to_csv(csv_path, index=False)
 
     def save_heatmap(self, class_name: str, output_dir: Path):
         # get the heatmap filename for this slide
-        output_dir.mkdir(parents=True, exist_ok=True)
+        file_path = output_dir / self.slide_path.parents[0]
+        file_path.mkdir(parents=True, exist_ok=True)
         img_path = output_dir / self.slide_path.with_suffix('.png')
         # create heatmap and write out
         heatmap = self.to_heatmap(class_name)
@@ -132,7 +130,6 @@ class SlidesIndexResults(SlidesIndex):
     def save(self):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
-        print("patches:", self.patches)
         for ps in self.patches:
             print("ps:", ps)
             # save out the csv file for this slide
@@ -166,13 +163,14 @@ class SlidesIndexResults(SlidesIndex):
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
                 border=0, jitter=0) -> 'SlidesIndexResults':
         ngpus = torch.cuda.device_count()
-        slide_index.patches = [slide_index[1:2],slide_index[4:5],slide_index[7:8],slide_index[10:11],
-                        slide_index[13:14],slide_index[16:17],slide_index[19:20],slide_index[22:23]]
-        #gpu_lists = [ [] for _ in range(ngpus) ]
-        #while len(slide_index) > 0:
-        #    for n in range(ngpus):
-        #        gpu_lists[n].append(slide_index.patches.pop())
-        #slide_index.patches = gpu_lists 
+        #slide_index.patches = [slide_index[1:2],slide_index[4:5],slide_index[7:8],slide_index[10:11],
+        #                slide_index[13:14],slide_index[16:17],slide_index[19:20],slide_index[22:23]]
+        gpu_lists = [ [] for _ in range(ngpus) ]
+        while len(slide_index) > 0:
+            for n in range(ngpus):
+                if len(slide_index) > 0:
+                    gpu_lists[n].append(slide_index.patches.pop())
+        slide_index.patches = gpu_lists 
         # spawn a process to predict for each slide
         slides = zip(slide_index, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size] * 
                         ngpus, [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, [heatmap_dir_name]*ngpus)
@@ -181,5 +179,5 @@ class SlidesIndexResults(SlidesIndex):
         pool.close()
         pool.join()
         results = [item for sublist in results for item in sublist]
-        print("results: ", results)
+
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)

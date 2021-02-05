@@ -140,8 +140,8 @@ def train_patch_classifier() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
     
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=np.random.seed(global_seed))
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
