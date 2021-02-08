@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import cv2
 import pytorch_lightning as pl
+import os 
 
 from repath.data.datasets import Dataset
 from repath.postprocess.slide_dataset import SlideDataset
@@ -162,22 +163,39 @@ class SlidesIndexResults(SlidesIndex):
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
                 border=0, jitter=0) -> 'SlidesIndexResults':
+        #print(len(slide_index))
+        processed = []
+        not_processed = []
+        for i in range(len(slide_index)):
+            full_name = slide_index[i].abs_slide_path.name
+            name = full_name.split('.')[0]
+            full_path =  os.path.split(slide_index[i].abs_slide_path)[-2]
+            basename = os.path.basename(full_path)
+            csv_file = str(name) +'.csv'
+            heatmap_file = str(name) + '.png'
+            csv_file_path = os.path.join((output_dir / results_dir_name / basename), csv_file)
+            heatmap_file_path = os.path.join((output_dir / heatmap_dir_name / basename ), heatmap_file)
+            if os.path.exists(csv_file_path) and os.path.exists(heatmap_file_path):
+               processed.append(slide_index[i])
+            else:
+                not_processed.append(slide_index[i])    
+        
+        not_processed = SlidesIndex(slide_index.dataset, not_processed)
+        
         ngpus = torch.cuda.device_count()
-        #slide_index.patches = [slide_index[1:2],slide_index[4:5],slide_index[7:8],slide_index[10:11],
-        #                slide_index[13:14],slide_index[16:17],slide_index[19:20],slide_index[22:23]]
         gpu_lists = [ [] for _ in range(ngpus) ]
-        while len(slide_index) > 0:
+        while len(not_processed) > 0:
             for n in range(ngpus):
-                if len(slide_index) > 0:
-                    gpu_lists[n].append(slide_index.patches.pop())
-        slide_index.patches = gpu_lists 
+                if len(not_processed) > 0:
+                    gpu_lists[n].append(not_processed.patches.pop())
+        not_processed.patches = gpu_lists 
         # spawn a process to predict for each slide
-        slides = zip(slide_index, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size] * 
+        slides = zip(not_processed, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size] * 
                         ngpus, [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, [heatmap_dir_name]*ngpus)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()
         pool.join()
         results = [item for sublist in results for item in sublist]
-
+        results.append(processed)
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)
