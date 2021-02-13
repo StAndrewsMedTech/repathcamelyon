@@ -19,6 +19,7 @@ from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
+from repath.postprocess.results import SlidesIndexResults
 from repath.utils.seeds import set_seed
 
 """
@@ -168,5 +169,30 @@ def train_patch_classifier() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
+
+def inference_on_valid16() -> None:
+    set_seed(global_seed)
+    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid16 = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    transform = Compose([
+        RandomCrop((299, 299)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name)
+    valid_results16.save()
 
 

@@ -272,6 +272,7 @@ def retrain_patch_classifier_hnm() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
                          logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+    
 
 def inference_on_valid() -> None:
     set_seed(global_seed)
