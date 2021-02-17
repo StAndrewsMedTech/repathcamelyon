@@ -1,9 +1,20 @@
+from pathlib import Path
+import json
 from typing import List, Dict
+
 from repath.data.annotations.annotation import Annotation
+
+
+def json_load(filepath, **kwargs):
+    with open(filepath, "r") as f:
+        data = json.load(f, **kwargs)
+    return data
+
 
 def base_shape(coord_list):
     vertices = [(float(c[0]), float(c[1])) for c in coord_list]
     return(vertices)
+
 
 def gjson_polygon(polygon: List, label: str, default_label: str):
     polygon_vertices = [base_shape(bs) for bs in polygon]    
@@ -16,7 +27,9 @@ def gjson_polygon(polygon: List, label: str, default_label: str):
 
     return annotations_list
 
-def annotation_from_feature(feature: Dict, group_labels: Dict[str, str], default_label: str) -> Annotation:
+
+def annotation_from_feature(feature: Dict, group_labels: Dict[str, str],
+                            default_label: str) -> Annotation:
     """ Gets annotation tags from Json features
 
     Args:
@@ -27,37 +40,28 @@ def annotation_from_feature(feature: Dict, group_labels: Dict[str, str], default
         Annotations tags such as name, type, label and vertices
 
     """
-    # get the attributes
-    type_ = feature['type']
-    
-    id_ = feature['id']
-    
     geometry = feature['geometry']
     geometry_type = geometry['type']
     coordinates = geometry['coordinates']
-    
     properties = feature['properties']
-    islocked = properties['isLocked']
-    measurements = properties['measurements']
-    
+
     if 'classification' in properties.keys():
         classification = properties['classification']
         label = classification['name']
-        colorRGB = classification['colorRGB']
     else:
         label = default_label
-        
-    assert label in group_labels.keys(), f'Unknown annotation group encountered. {label}'
+
+    assert label in group_labels.keys(), f'Unknown annotation group {label}'
     label = group_labels[label]
-        
+
     if geometry_type == 'Polygon':
         annotations_list = gjson_polygon(coordinates, label, default_label)
     elif geometry_type == 'MultiPolygon':
         annotations_list = [gjson_polygon(crd, label, default_label) for crd in coordinates]
         annotations_list = [item for sublist in annotations_list for item in sublist]
-        
-    # pass the data to the annotation factory
+    
     return annotations_list
+
 
 def load_annotations(json_path: Path, group_labels: Dict[str, str], default_label: str) -> List[Annotation]:
     file_in = json_load(json_path)
@@ -66,7 +70,7 @@ def load_annotations(json_path: Path, group_labels: Dict[str, str], default_labe
     for feat in features:
         annots = annotation_from_feature(feat, group_labels, default_label)
         annotations_list.append(annots)
-        
+    
     annotations_list = [item for sublist in annotations_list for item in sublist]
-        
+
     return annotations_list
