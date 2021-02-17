@@ -65,7 +65,7 @@ def training():
     train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
 
     # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_endometrial.csv')
+    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
     
     #train slides info
     train_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'train']
@@ -110,7 +110,7 @@ def validation():
     valid_slide_paths = sorted([p.relative_to(root) for p in valid_slide_dir.glob("*.isyntax")])
 
     # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_endometrial.csv')
+    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
     
     #valid slides info
     valid_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'valid']
@@ -168,7 +168,7 @@ def testing():
     test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.xml")])
 
     # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_endometrial.csv')
+    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
     
     #test slides info
     train_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'test']
