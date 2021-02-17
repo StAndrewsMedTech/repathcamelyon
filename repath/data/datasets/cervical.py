@@ -64,7 +64,7 @@ def training():
     train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
 
     # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_cervical.csv')
+    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
     
     #train slides info
     train_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'train']
@@ -109,7 +109,7 @@ def validation():
     valid_slide_paths = sorted([p.relative_to(root) for p in valid_slide_dir.glob("*.isyntax")])
 
     # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_cervical.csv')
+    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
     
     #valid slides info
     valid_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'valid']
@@ -167,7 +167,7 @@ def testing():
     test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.xml")])
 
     # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_cervical.csv')
+    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
     
     #test slides info
     train_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'test']
