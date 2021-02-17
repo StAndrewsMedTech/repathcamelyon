@@ -68,3 +68,23 @@ class TissueDetectorGreyScale(TissueDetector):
         np_mask = np.less_equal(image_grey, 0.8)
 
         return np_mask
+
+
+class TissueDetectorAll(TissueDetector):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
+        """creates a dataframe of all pixels in image labelled as foreground
+
+        Args:
+        image: A scaled down WSI image. Must be r,g,b.
+
+        Returns:
+        An ndarray of booleans with the same dimensions as the input image
+        True means foreground
+        """
+        # convert PIL image to numpy array
+        image = np.asarray(image)
+
+        # get masks, any pixel that is less than 0.8
+        np_mask = np.array(np.ones(image.shape[0:2]), dtype=bool)
+
+        return np_mask
