@@ -60,7 +60,7 @@ def training():
     train_annotation_dir = annotations_dir / "train"
     
     # all paths are relative to the dataset 'root'
-    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.xml")])
+    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.txt")])
     train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
 
     # load cervical data info
@@ -107,7 +107,7 @@ def testing():
 
     # all paths are relative to the dataset 'root'
     test_slide_paths = sorted([p.relative_to(root) for p in test_slide_dir.glob("*.isyntax")])
-    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.xml")])
+    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.txt")])
 
     # load cervical data info
     cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
