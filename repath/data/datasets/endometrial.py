@@ -91,65 +91,6 @@ def training():
 
     return Endometrial(root, df)
 
-def validation():
-     """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
-
-    Returns:
-        DataFrame (pd.DataFrame): Train data frame
-    """
-    # set up the paths to the slides and annotations
-    root = project_root() / "data" / "endometrial" / "raw" 
-    annotations_dir = root / "annotations"
-    
-    valid_slide_dir = root / "valid"
-
-    #validation annotations
-    valid_annotation_dir = annotations_dir / "valid"
-    # all paths are relative to the dataset 'root'
-    valid_annotation_paths = sorted([p.relative_to(root) for p in valid_annotations_dir.glob("*.xml")])
-    valid_slide_paths = sorted([p.relative_to(root) for p in valid_slide_dir.glob("*.isyntax")])
-
-    # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
-    
-    #valid slides info
-    valid_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'valid']
-    
-    #get slide level labels
-    valid_slides_labels_df = valid_slides_info['Category']
-
-    #convert labels dataframe to a list
-    valid_slide_level_labels = valid_slides_labels_df.values.tolist()
-    
-    #tags shows the sub-category labels
-    valid_tags_df = valid_slides_info['subCategory']
-
-    valid_tags = valid_tags_df.values.tolist()
-    valid_tags = ', '.join(valid_tags)
-    # turn them into a data frame and pad with empty annotation paths
-    df = pd.DataFrame()
-    df["slide"] =  valid_slide_paths
-    df["annotation"] =  valid_annotation_paths
-    df["label"] =  valid_slide_level_labels
-    df["tags"] =  valid_tags
-
-    return Endometrial(root, df)
-
-def training_small():
-    # set up the paths to the slides and annotations
-    endo = training()
-    df = endo.paths.sample(12, random_state=777)
-
-    return Endometrial(project_root() / endo.root, df)
-
-def validation_small():
-    # set up the paths to the slides and annotations
-    endo = validation()
-    df = endo.paths.sample(6, random_state=777)
-
-    return Endometrial(project_root() / endo.root, df)
-
-
 def testing():
     """ Generated a data-frame of slide_path, annotation_path, label and tags for test dataset.
 
