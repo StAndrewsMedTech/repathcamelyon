@@ -60,7 +60,7 @@ def training():
     train_annotation_dir = annotations_dir / "train"
     
     # all paths are relative to the dataset 'root'
-    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.xml")])
+    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.txt")])
     train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
 
     # load cervical data info
@@ -90,63 +90,6 @@ def training():
 
     return Cervical(root, df)
 
-def validation():
-     """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
-
-    Returns:
-        DataFrame (pd.DataFrame): Train data frame
-    """
-    # set up the paths to the slides and annotations
-    root = project_root() / "data" / "cervical" / "raw" 
-    annotations_dir = root / "annotations"
-    
-    valid_slide_dir = root / "valid"
-
-    #validation annotations
-    valid_annotation_dir = annotations_dir / "valid"
-    # all paths are relative to the dataset 'root'
-    valid_annotation_paths = sorted([p.relative_to(root) for p in valid_annotations_dir.glob("*.xml")])
-    valid_slide_paths = sorted([p.relative_to(root) for p in valid_slide_dir.glob("*.isyntax")])
-
-    # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
-    
-    #valid slides info
-    valid_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'valid']
-    
-    #get slide level labels
-    valid_slides_labels_df = valid_slides_info['Category']
-
-    #convert labels dataframe to a list
-    valid_slide_level_labels = valid_slides_labels_df.values.tolist()
-    
-    #tags shows the sub-category labels
-    valid_tags_df = valid_slides_info['subCategory']
-
-    valid_tags = valid_tags_df.values.tolist()
-    valid_tags = ', '.join(valid_tags)
-    # turn them into a data frame and pad with empty annotation paths
-    df = pd.DataFrame()
-    df["slide"] = valid_slide_paths
-    df["annotation"] = valid_annotation_paths
-    df["label"] = valid_slide_level_labels
-    df["tags"] = valid_tags
-
-    return Cervical(root, df)
-
-def training_small():
-    # set up the paths to the slides and annotations
-    cerv = training()
-    df = cerv.paths.sample(12, random_state=777)
-
-    return Cervical(project_root() / cerv.root, df)
-
-def validation_small():
-    # set up the paths to the slides and annotations
-    cerv = validation()
-    df = cerv.paths.sample(6, random_state=777)
-
-    return Cervical(project_root() / cerv.root, df)
 
 
 def testing():
@@ -164,7 +107,7 @@ def testing():
 
     # all paths are relative to the dataset 'root'
     test_slide_paths = sorted([p.relative_to(root) for p in test_slide_dir.glob("*.isyntax")])
-    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.xml")])
+    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.txt")])
 
     # load cervical data info
     cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
