@@ -96,9 +96,8 @@ docker_run:
 				-it $(PROJECT_NAME):latest
 
 docker_run_local:
-	docker run --gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) \
+	docker run --shm-size=16G --gpus all -p $(JUPYTER_PORT):$(JUPYTER_PORT) \
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
-				-v /data/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
 				-it $(PROJECT_NAME):latest
 
 #################################################################################

@@ -139,7 +139,7 @@ def testing():
     #path to the test slides
     root = project_root() / "data" / "camelyon17" / "raw" / "testing"
     test_slides_dir = root / "patients"
-    slide_paths = sorted([p.relative_to(root) for p in test_slides.dir.glob("*.tif")])
+    slide_paths = sorted([p.relative_to(root) for p in test_slides_dir.glob("*.tif")])
     labels = pd.read_csv(root /'evaluation/submission_example.csv')
 
     slides_labels_df = labels.loc[labels.stage.isin(["itc", "negative", "micro", "macro"])] 
@@ -179,4 +179,4 @@ def testing():
     df["label"] = slide_labels
     df["tags"] = tags 
 
-
+    return Camelyon17(root, df) 

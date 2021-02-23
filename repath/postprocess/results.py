@@ -164,6 +164,10 @@ class SlidesIndexResults(SlidesIndex):
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
                 border=0, jitter=0) -> 'SlidesIndexResults':
         #print(len(slide_index))
+        ### temp for debugging
+        print("predict func")
+        slide_index = slide_index[0:10]
+        print("slide index len: ", len(slide_index))
         processed = []
         not_processed = []
         for i in range(len(slide_index)):
@@ -176,7 +180,7 @@ class SlidesIndexResults(SlidesIndex):
             csv_file_path = os.path.join((output_dir / results_dir_name / basename), csv_file)
             heatmap_file_path = os.path.join((output_dir / heatmap_dir_name / basename ), heatmap_file)
             if os.path.exists(csv_file_path) and os.path.exists(heatmap_file_path):
-               processed.append(slide_index[i])
+                processed.append(slide_index[i])
             else:
                 not_processed.append(slide_index[i])    
         
@@ -198,4 +202,5 @@ class SlidesIndexResults(SlidesIndex):
         pool.join()
         results = [item for sublist in results for item in sublist]
         results.append(processed)
+        print(results[0])
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)

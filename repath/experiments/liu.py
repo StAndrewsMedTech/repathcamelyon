@@ -87,6 +87,9 @@ class PatchClassifier(pl.LightningModule):
         }
         return [optimizer], [scheduler]
 
+    def forward(self, x):
+        return self.model(x)
+
 """
 Experiment step
 """
@@ -183,7 +186,7 @@ def inference_on_valid16() -> None:
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    valid16 = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
 
     transform = Compose([
         RandomCrop((299, 299)),
@@ -191,7 +194,7 @@ def inference_on_valid16() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
+    valid_results16 = SlidesIndexResults.predict(valid, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name)
     valid_results16.save()
 
