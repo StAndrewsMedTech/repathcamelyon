@@ -74,7 +74,7 @@ def training():
     Adenocarcinoma_anno_dir = annotations_dir / "Malignant" / "Adenocarcinoma"
     Squamouscarcinoma_anno_dir =  annotations_dir / "Malignant" / "Squamous carcinoma"
     Other_anno_dir = annotations_dir / "Malignant "/ "Other"
-    Normal_anno_dir = annotations_dir / "Normali-imflammation"
+    Normal_anno_dir = annotations_dir / "Normal-imflammation"
 
 
 
