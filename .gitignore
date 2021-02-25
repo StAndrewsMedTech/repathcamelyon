@@ -168,3 +168,6 @@ target/
 
 # credentials folder for accessing services
 .credentials
+
+# project output directories
+experiments/
