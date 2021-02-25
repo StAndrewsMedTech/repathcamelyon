@@ -74,7 +74,7 @@ def training():
     Adenocarcinoma_anno_dir = annotations_dir / "Malignant" / "Adenocarcinoma"
     Squamouscarcinoma_anno_dir =  annotations_dir / "Malignant" / "Squamous carcinoma"
     Other_anno_dir = annotations_dir / "Malignant "/ "Other"
-    Normal_anno_dir = annotations_dir / "Normal_imflammation"
+    Normal_anno_dir = annotations_dir / "Normali-imflammation"
 
 
 
@@ -108,7 +108,7 @@ def training():
 
     df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
                   ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
-                  ['norma_-inflammation'] * len(normal_slide_paths)
+                  ['normal_inflammation'] * len(normal_slide_paths)
 
     df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
                  ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
@@ -148,7 +148,7 @@ def testing():
     Adenocarcinoma_anno_dir = annotations_dir / "Malignant" / "Adenocarcinoma"
     Squamouscarcinoma_anno_dir =  annotations_dir / "Malignant" / "Squamous carcinoma"
     Other_anno_dir = annotations_dir / "Malignant "/ "Other"
-    Normal_anno_dir = annotations_dir / "Normal_imflammation"
+    Normal_anno_dir = annotations_dir / "Normal-imflammation"
 
 
      #slide paths
@@ -181,7 +181,7 @@ def testing():
 
     df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
                   ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
-                  ['normal-inflammation'] * len(normal_slide_paths)
+                  ['normal_inflammation'] * len(normal_slide_paths)
 
     df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
                  ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
