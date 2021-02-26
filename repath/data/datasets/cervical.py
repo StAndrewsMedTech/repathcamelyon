@@ -18,7 +18,7 @@ class Cervical_subCategories(Cervical):
     
     @property
     def labels(self) -> Dict[str, int]:
-        return {"CIN1": 0, "HPV":1 , "CIN2": 2, "CIN3": 3, "Squamous carcinoma": 4, "Adenocarcinoma": 5, "CGIN": 6, "Other": 7 , "Normal/inflammation": 8}
+        return {"cin1": 0, "hpv":1 , "cin2": 2, "cin3": 3, "squamous_carcinoma": 4, "adenocarcinoma": 5, "cgin": 6, "other": 7 , "normal_inflammation": 8}
 
 
 class Cervical(Dataset):
@@ -26,7 +26,7 @@ class Cervical(Dataset):
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path) -> AnnotationSet:
-        group_labels = {"Low Grade": "low_grade", "High Grade": "high_grade", "Malignant": "malignant", "Normal/inflammation": "normal_inflammation"}
+        group_labels = {"low_grade": "low_grade", "high_grade": "high_grade", "malignant": "malignant", "Normal/inflammation": "normal_inflammation"}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["low_grade",  "high_grade",  "malignant", "normal_inflammation"]
         return AnnotationSet(annotations, self.labels, labels_order, "low_grade")
@@ -38,11 +38,11 @@ class Cervical(Dataset):
     ## How to put sub category labels here?
     @property
     def labels(self) -> Dict[str, int]:
-        return {"Background" : 0, "Low Grade": 1 , "High Grade": 2 ,  "Malignant": 3, "Normal/inflammation": 4}
+        return {"background" : 0, "low_grade": 1 , "high_grade": 2 ,  "malignant": 3, "normal_inflammation": 4}
 
     @property
     def slide_labels(self) -> Dict[str, int]:
-        return {"Low Grade": 1 , "High Grade": 2 ,  "Malignant": 3, "Normal/inflammation": 4}
+        return {"low_grade": 1 , "high_grade": 2 ,  "malignant": 3, "normal_inflammation": 4}
 
 def training():
      """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
@@ -55,50 +55,50 @@ def training():
     annotations_dir = root / "annotations"
     
     #slide directories    
-    CIN1_slide_dir = root / "Low Grade" / "CIN1"
-    HPV_slide_dir = root / "Low Grade" / "HPV"
-    CIN2_slide_dir = root / "High Grade" / "CIN2"
-    CIN3_slide_dir = root / "High Grade" / "CIN3"
-    CGIN_slide_dir = root / "Malignant" / "CGIN"
-    Adenocarcinoma_slide_dir = root / "Malignant" / "Adenocarcinoma"
-    Squamouscarcinoma_slide_dir =  root / "Malignant" / "Squamous carcinoma"
-    Other_slide_dir = root / "Malignant" / "Other"
-    Normal_slide_dir = root / "Normal-inflammation"
+    cin1_slide_dir = root / "low_grade" / "cin1"
+    hpv_slide_dir = root / "low_grade" / "hpv"
+    cin2_slide_dir = root / "high_grade" / "cin2"
+    cin3_slide_dir = root / "high_grade" / "cin3"
+    cgin_slide_dir = root / "malignant" / "cgin"
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
+    other_slide_dir = root / "malignant" / "other"
+    Normal_slide_dir = root / "normal_inflammation"
 
     #annotation directories
-    CIN1_anno_dir = annotations_dir / "Low Grade" / "CIN1"
-    HPV_anno_dir = annotations_dir / "Low Grade" / "HPV"
-    CIN2_anno_dir = annotations_dir / "High Grade" / "CIN2"
-    CIN3_anno_dir = annotations_dir / "High Grade" / "CIN3"
-    CGIN_anno_dir = annotations_dir / "Malignant" / "CGIN"
-    Adenocarcinoma_anno_dir = annotations_dir / "Malignant" / "Adenocarcinoma"
-    Squamouscarcinoma_anno_dir =  annotations_dir / "Malignant" / "Squamous carcinoma"
-    Other_anno_dir = annotations_dir / "Malignant "/ "Other"
-    Normal_anno_dir = annotations_dir / "Normal-imflammation"
+    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
+    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
+    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
+    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
+    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
+    other_anno_dir = annotations_dir / "malignant "/ "other"
+    normal_anno_dir = annotations_dir / "normal_inflammation"
 
 
 
     #slide paths
-    cin1_slide_paths = sorted([p.relative_to(root) for p in CIN1_slide_dir.glob("*.isyntax")])
-    hpv_slide_paths = sorted([p.relative_to(root) for p in HPV_slide_dir.glob("*.isyntax")])
-    cin2_slide_paths = sorted([p.relative_to(root) for p in CIN2_slide_dir.glob("*.isyntax")])
-    cin3_slide_paths = sorted([p.relative_to(root) for p in CIN3_slide_dir.glob("*.isyntax")])
-    cgin_slide_paths = sorted([p.relative_to(root) for p in CGIN_slide_dir.glob("*.isyntax")])
-    adeno_slide_paths = sorted([p.relative_to(root) for p in Adenocarcinoma_slide_dir.glob("*.isyntax")])
-    squamou_slide_paths = sorted([p.relative_to(root) for p in Squamouscarcinoma_slide_dir.glob("*.isyntax")])
-    other_slide_paths = sorted([p.relative_to(root) for p in Other_slide_dir.glob("*.isyntax")])
+    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
+    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
+    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
+    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
+    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
+    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
     normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
 
     #annotation paths
-    cin1_anno_paths = sorted([p.relative_to(root) for p in CIN1_anno_dir.glob("*.txt")])
-    hpv_anno_paths = sorted([p.relative_to(root) for p in HPV_anno_dir.glob("*.txt")])
-    cin2_anno_paths = sorted([p.relative_to(root) for p in CIN2_anno_dir.glob("*.txt")])
-    cin3_anno_paths = sorted([p.relative_to(root) for p in CIN3_anno_dir.glob("*.txt")])
-    cgin_anno_paths = sorted([p.relative_to(root) for p in CGIN_anno_dir.glob("*.txt")])
-    adeno_anno_paths = sorted([p.relative_to(root) for p in Adenocarcinoma_annodir.glob("*.txt")])
-    squamou_anno_paths = sorted([p.relative_to(root) for p in Squamouscarcinoma_anno_dir.glob("*.txt")])
-    other_anno_paths = sorted([p.relative_to(root) for p in Other_anno_dir.glob("*.txt")])
-    normal_anno_paths = sorted([p.relative_to(root) for p in Normal_anno_dir.glob("*.txt")])
+    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
+    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
+    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
+    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
+    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
+    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
+    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
 
 
     df = pd.DataFrame()
@@ -129,49 +129,49 @@ def testing():
     annotations_dir = root / "annotations"
 
     #slide directories    
-    CIN1_slide_dir = root / "Low Grade" / "CIN1"
-    HPV_slide_dir = root / "Low Grade" / "HPV"
-    CIN2_slide_dir = root / "High Grade" / "CIN2"
-    CIN3_slide_dir = root / "High Grade" / "CIN3"
-    CGIN_slide_dir = root / "Malignant" / "CGIN"
-    Adenocarcinoma_slide_dir = root / "Malignant" / "Adenocarcinoma"
-    Squamouscarcinoma_slide_dir =  root / "Malignant" / "Squamous carcinoma"
-    Other_slide_dir = root / "Malignant" / "Other"
-    Normal_slide_dir = root / "Normal-inflammation"
+    cin1_slide_dir = root / "low_grade" / "cin1"
+    hpv_slide_dir = root / "low_grade" / "hpv"
+    cin2_slide_dir = root / "high_grade" / "cin2"
+    cin3_slide_dir = root / "high_grade" / "cin3"
+    cgin_slide_dir = root / "malignant" / "cgin"
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
+    other_slide_dir = root / "malignant" / "other"
+    Normal_slide_dir = root / "normal_inflammation"
 
     #annotation directories
-    CIN1_anno_dir = annotations_dir / "Low Grade" / "CIN1"
-    HPV_anno_dir = annotations_dir / "Low Grade" / "HPV"
-    CIN2_anno_dir = annotations_dir / "High Grade" / "CIN2"
-    CIN3_anno_dir = annotations_dir / "High Grade" / "CIN3"
-    CGIN_anno_dir = annotations_dir / "Malignant" / "CGIN"
-    Adenocarcinoma_anno_dir = annotations_dir / "Malignant" / "Adenocarcinoma"
-    Squamouscarcinoma_anno_dir =  annotations_dir / "Malignant" / "Squamous carcinoma"
-    Other_anno_dir = annotations_dir / "Malignant "/ "Other"
-    Normal_anno_dir = annotations_dir / "Normal-imflammation"
+    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
+    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
+    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
+    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
+    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
+    other_anno_dir = annotations_dir / "malignant "/ "other"
+    normal_anno_dir = annotations_dir / "normal_inflammation"
 
 
      #slide paths
-    cin1_slide_paths = sorted([p.relative_to(root) for p in CIN1_slide_dir.glob("*.isyntax")])
-    hpv_slide_paths = sorted([p.relative_to(root) for p in HPV_slide_dir.glob("*.isyntax")])
-    cin2_slide_paths = sorted([p.relative_to(root) for p in CIN2_slide_dir.glob("*.isyntax")])
-    cin3_slide_paths = sorted([p.relative_to(root) for p in CIN3_slide_dir.glob("*.isyntax")])
-    cgin_slide_paths = sorted([p.relative_to(root) for p in CGIN_slide_dir.glob("*.isyntax")])
-    adeno_slide_paths = sorted([p.relative_to(root) for p in Adenocarcinoma_slide_dir.glob("*.isyntax")])
-    squamou_slide_paths = sorted([p.relative_to(root) for p in Squamouscarcinoma_slide_dir.glob("*.isyntax")])
-    other_slide_paths = sorted([p.relative_to(root) for p in Other_slide_dir.glob("*.isyntax")])
+    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
+    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
+    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
+    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
+    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
+    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
     normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
 
     #annotation paths
-    cin1_anno_paths = sorted([p.relative_to(root) for p in CIN1_anno_dir.glob("*.txt")])
-    hpv_anno_paths = sorted([p.relative_to(root) for p in HPV_anno_dir.glob("*.txt")])
-    cin2_anno_paths = sorted([p.relative_to(root) for p in CIN2_anno_dir.glob("*.txt")])
-    cin3_anno_paths = sorted([p.relative_to(root) for p in CIN3_anno_dir.glob("*.txt")])
-    cgin_anno_paths = sorted([p.relative_to(root) for p in CGIN_anno_dir.glob("*.txt")])
-    adeno_anno_paths = sorted([p.relative_to(root) for p in Adenocarcinoma_annodir.glob("*.txt")])
-    squamou_anno_paths = sorted([p.relative_to(root) for p in Squamouscarcinoma_anno_dir.glob("*.txt")])
-    other_anno_paths = sorted([p.relative_to(root) for p in Other_anno_dir.glob("*.txt")])
-    normal_anno_paths = sorted([p.relative_to(root) for p in Normal_anno_dir.glob("*.txt")])
+    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
+    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
+    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
+    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
+    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
+    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
+    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
 
 
     df = pd.DataFrame()
