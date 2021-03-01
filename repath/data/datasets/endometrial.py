@@ -18,8 +18,17 @@ class Endometrial_subCategories(Endometrial):
     
     @property
     def labels(self) -> Dict[str, int]:
-        return {"Adenocarcinoma": 0, "Carcinosarcoma":1 , "Sarcoma": 2, "Hyperplasia with atypia": 3, "Other": 4, "Insufficient": 5, 
-                "Proliferative": 6, "Secretory": 7 , "Menstrual": 8, "Innactive/atrophic": 9}, "Hormonal": 10}
+        return {"adenocarcinoma": 0, "carcinosarcoma":1 , "sarcoma": 2, "hyperplasia": 3, "other": 4, "insufficient": 5, 
+                "proliferative": 6, "secretory": 7 , "menstrual": 8, "innactive_atrophic": 9, "hormonal": 10}
+
+class Endometrial_subCategories(Endometrial):
+     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
+        super().__init__(root, paths)
+    
+    @property
+    def labels(self) -> Dict[str, int]:
+        return {"adenocarcinoma": 0, "carcinosarcoma":1 , "sarcoma": 2, "hyperplasia with atypia": 3, "other": 4, "insufficient": 5, 
+                "proliferative": 6, "secretory": 7 , "menstrual": 8, "innactive_atrophic": 9, "hormonal": 10}
 
 
 class Endometrial(Dataset):
@@ -27,7 +36,7 @@ class Endometrial(Dataset):
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path) -> AnnotationSet:
-        group_labels = {"Malignant": "malignant", "Insufficient": "insufficient", "Other/benign": "other_benign"}
+        group_labels = {"malignant": "malignant", "insufficient": "insufficient", "other_benign": "other_benign"}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = [ "malignant", "insufficient", "other_benign"]
         return AnnotationSet(annotations, self.labels, labels_order, "malignant")
@@ -39,11 +48,11 @@ class Endometrial(Dataset):
     ## How to put sub category labels here?
     @property
     def labels(self) -> Dict[str, int]:
-        return {"Background" : 0, "Malignant": 1 , "Insufficient": 2 ,  "Other/benign": 3}
+        return {"background" : 0, "malignant": 1 , "insufficient": 2 ,  "other_benign": 3}
 
     @property
     def slide_labels(self) -> Dict[str, int]:
-        return {"Malignant": 1 , "Insufficient": 2 ,  "Other/benign": 3}
+        return {"malignant": 1 , "insufficient": 2 ,  "other_benign": 3}
 
 def training():
      """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
@@ -52,44 +61,79 @@ def training():
         DataFrame (pd.DataFrame): Train data frame
     """
     # set up the paths to the slides and annotations
-    root = project_root() / "data" / "endometrial" / "raw" 
+    root = project_root() / "data" / "endometrial" / "raw" / "training" 
     annotations_dir = root / "annotations"
     
-    train_slide_dir = root / "train"
+    #slide directories    
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    carcinosarcoma_slide_dir = root / "malignant" / "carcinosarcoma"
+    sarcoma_slide_dir = root / "malignant" / "sarcoma"
+    hyperplasia_slide_dir = root / "malignant" / "hyperplasia"
+    other_slide_dir = root / "malignant" / "other"
+    insufficient_slide_dir = root / "insufficient" 
+    proliferative_slide_dir = root / "other_benign" / "proliferative"
+    secretory_slide_dir = root / "other_benign" / "secretory"
+    menstrual_slide_dir = root / "other_benign" / "menstrual"
+    innactive_atrophic_atrophic_slide_dir = root / "other_benign" / "innactive_atrophic"
+    Hormonal_slide_dir = root / "other_benign" / "hormonal"
+    
+    #annotation directories
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    carcinosarcoma_anno_dir = annotations_dir / "malignant" / "carcinosarcoma"
+    sarcoma_anno_dir = annotations_dir / "malignant" / "sarcoma"
+    hyperplasia_anno_dir = annotations_dir / "malignant" / "hyperplasia"
+    other_anno_dir = annotations_dir / "malignant" / "other"
+    insufficient_anno_dir = annotations_dir / "insufficient" 
+    proliferative_anno_dir = annotations_dir / "other_benign" / "proliferative"
+    secretory_anno_dir = annotations_dir / "other_benign" / "secretory"
+    menstrual_anno_dir = annotations_dir / "other_benign" / "menstrual"
+    innactive_atrophic_atrophic_anno_dir = annotations_dir / "other_benign" / "innactive_atrophic"
+    Hormonal_anno_dir = annotations_dir / "other_benign" / "hormonal"
 
-    #train  annotations
-    train_annotation_dir = annotations_dir / "train"
-    
-    # all paths are relative to the dataset 'root'
-    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.txt")])
-    train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
+    #slide paths
+    adenocarcinoma_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    carcinosarcoma_slide_paths = sorted([p.relative_to(root) for p in carcinosarcoma_slide_dir.glob("*.isyntax")])
+    sarcoma_slide_paths = sorted([p.relative_to(root) for p in sarcoma_slide_dir.glob("*.isyntax")])
+    hyperplasia_slide_paths = sorted([p.relative_to(root) for p in hyperplasia_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
+    insufficient_slide_paths = sorted([p.relative_to(root) for p in insufficient_slide_dir.glob("*.isyntax")])
+    proliferative_slide_paths = sorted([p.relative_to(root) for p in proliferative_slide_dir.glob("*.isyntax")])
+    secretory_slide_paths = sorted([p.relative_to(root) for p in secretory_slide_dir.glob("*.isyntax")])
+    menstrual_slide_paths = sorted([p.relative_to(root) for p in  menstrual_slide_dir.glob("*.isyntax")])
+    innactive_atrophic_slide_paths = sorted([p.relative_to(root) for p in innactive_atrophic_slide_dir.glob("*.isyntax")])
+    hormonal_slide_paths = sorted([p.relative_to(root) for p in hormonal_slide_dir.glob("*.isyntax")])
 
-    # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
-    
-    #train slides info
-    train_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'train']
-  
-    #get slide level labels
-    train_slides_labels_df = train_slides_info['Category']
-    
-    #convert labels dataframe to a list
-    train_slide_level_labels = train_slides_labels_df.values.tolist()
-    
-    
-    #tags shows the sub-category labels
-    train_tags_df = train_slides_info['subCategory']
-    train_tags = train_tags_df.values.tolist()
-    train_tags = ', '.join(train_tags)
-   
-    # turn them into a data frame and pad with empty annotation paths
+    #annotation paths
+    adenocarcinoma_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_anno_dir.glob("*.txt")])
+    carcinosarcoma_anno_paths = sorted([p.relative_to(root) for p in carcinosarcoma_anno_dir.glob("*.txt")])
+    sarcoma_anno_paths = sorted([p.relative_to(root) for p in sarcoma_anno_dir.glob("*.txt")])
+    hyperplasia_anno_paths = sorted([p.relative_to(root) for p in hyperplasia_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    insufficient_anno_paths = sorted([p.relative_to(root) for p in insufficient_anno_dir.glob("*.txt")])
+    proliferative_anno_paths = sorted([p.relative_to(root) for p in proliferative_anno_dir.glob("*.txt")])
+    secretory_anno_paths = sorted([p.relative_to(root) for p in secretory_anno_dir.glob("*.txt")])
+    menstrual_anno_paths = sorted([p.relative_to(root) for p in  menstrual_anno_dir.glob("*.txt")])
+    innactive_atrophic_anno_paths = sorted([p.relative_to(root) for p in innactive_atrophic_anno_dir.glob("*.txt")])
+    hormonal_anno_paths = sorted([p.relative_to(root) for p in Hormonal_anno_dir.glob("*.txt")])
+
     df = pd.DataFrame()
-    df["slide"] = train_slide_paths 
-    df["annotation"] =  train_annotation_paths 
-    df["label"] = train_slide_level_labels 
-    df["tags"] = train_tags 
+    df["slide"] = adenocarcinoma_slide_paths + carcinosarcoma_slide_paths + sarcoma_slide_paths + hyperplasia_slide_paths + other_slide_paths + insufficient_slide_paths + proliferative_slide_paths + \
+                secretory_slide_paths +  menstrual_slide_paths + innactive_atrophic_slide_paths + hormonal_slide_paths
+    
+    df["annotations"] = adenocarcinoma_anno_paths + carcinosarcoma_anno_paths + sarcoma_anno_paths + hyperplasia_anno_paths + other_anno_paths + insufficient_anno_paths + proliferative_anno_paths + \
+                secretory_anno_paths +  menstrual_anno_paths + innactive_atrophic_anno_paths + hormonal_anno_paths
 
-    return Endometrial(root, df)
+    df["label"] = ['malignant'] * len(adenocarcinoma_slide_paths) + ['malignant'] * len(carcinosarcoma_slide_paths) + ['malignant'] * len(sarcoma_slide_paths) + ['malignant'] * len(hyperplasia_slide_paths) + ['malignant'] *  len(other_slide_paths) + ['insufficient'] * len(insufficient_slide_paths) + ['other_benign'] * len(proliferative_slide_paths) + ['other_benign'] * len(secretory_slide_paths) +   ['other_benign'] * len(menstrual_slide_paths) +  ['other_benign'] * len(innactive_atrophic_slide_paths) + ['other_benign'] * len(hormonal_slide_paths)
+
+
+
+    df["tags"] = ['adenocarcinoma'] * len(adenocarcinoma_slide_paths) + ['carcinosarcoma'] * len(carcinosarcoma_slide_paths) + ['sarcoma'] * len(sarcoma_slide_paths) + ['hyperplasia'] * len(hyperplasia_slide_paths) + ['other'] *  len(other_slide_paths) + ['insufficient'] * len(insufficient_slide_paths) + ['proliferative'] * len(proliferative_slide_paths) + ['secretory'] * len(secretory_slide_paths) +   ['menstrual'] * len(menstrual_slide_paths) +  ['innactive_atrophic'] * len(innactive_atrophic_slide_paths) + ['hormonal'] * len(hormonal_slide_paths)
+
+
+    
+    return Cervical(root, df)
+
+
 
 def testing():
     """ Generated a data-frame of slide_path, annotation_path, label and tags for test dataset.
@@ -97,40 +141,77 @@ def testing():
     Returns:
         DataFrame (pd.DataFrame): Test data frame
     """
-    # set up the paths to the slides and annotations
-    root = project_root() / "data" / "endometrial" / "raw" / "test"
+    
+     # set up the paths to the slides and annotations
+    root = project_root() / "data" / "endometrial" / "raw" / "testing"
     annotations_dir = root / "annotations"
-    test_slide_dir = root / "test"
-    
-    test_annotation_dir = annotations_dir / "test"
 
-    # all paths are relative to the dataset 'root'
-    test_slide_paths = sorted([p.relative_to(root) for p in test_slide_dir.glob("*.isyntax")])
-    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.txt")])
+    #slide directories    
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    carcinosarcoma_slide_dir = root / "malignant" / "carcinosarcoma"
+    sarcoma_slide_dir = root / "malignant" / "sarcoma"
+    hyperplasia_slide_dir = root / "malignant" / "hyperplasia"
+    other_slide_dir = root / "malignant" / "other"
+    insufficient_slide_dir = root / "insufficient"
+    proliferative_slide_dir = root / "other_benign" / "proliferative"
+    secretory_slide_dir = root / "other_benign" / "secretory"
+    menstrual_slide_dir = root / "other_benign" / "menstrual"
+    innactive_atrophic_slide_dir = root / "other_benign" / "innactive_atrophic"
+    Hormonal_slide_dir = root / "other_benign" / "hormonal"
 
-    # load endometrial data info
-    endometrial_data_info = pd.read_csv(root / 'iCAIRD_Endometrial_Data.csv')
-    
-    #test slides info
-    train_slides_info =  endometrial_data_info.loc[endometrial_data_info['train/test/valid'] == 'test']
-   
-    #get slide level labels
-    test_slides_labels_df = test_slides_info['Category']
-   
-    #convert labels dataframe to a list
-    test_slide_level_labels = test_slides_labels_df.values.tolist()
-    
-    #tags shows the sub-category labels
-    test_tags_df = test_slides_info['subCategory']
-    test_tags = test_tags_df.values.tolist()
-    test_tags = ', '.join(test_tags)
-   
-    # turn them into a data frame and pad with empty annotation paths
+    #annotation directories
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    carcinosarcoma_anno_dir = annotations_dir / "malignant" / "carcinosarcoma"
+    sarcoma_anno_dir = annotations_dir / "malignant" / "sarcoma"
+    hyperplasia_anno_dir = annotations_dir / "malignant" / "hyperplasia"
+    other_anno_dir = annotations_dir / "malignant" / "other"
+    insufficient_anno_dir = annotations_dir / "insufficient"
+    proliferative_anno_dir = annotations_dir / "other_benign" / "proliferative"
+    secretory_anno_dir = annotations_dir / "other_benign" / "secretory"
+    menstrual_anno_dir = annotations_dir / "other_benign" / "menstrual"
+    innactive_atrophic_atrophic_anno_dir = annotations_dir / "other_benign" / "innactive_atrophic"
+    Hormonal_anno_dir = annotations_dir / "other_benign" / "Hormonal"
+
+    #slide paths
+    adenocarcinoma_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    carcinosarcoma_slide_paths = sorted([p.relative_to(root) for p in carcinosarcoma_slide_dir.glob("*.isyntax")])
+    sarcoma_slide_paths = sorted([p.relative_to(root) for p in sarcoma_slide_dir.glob("*.isyntax")])
+    hyperplasia_slide_paths = sorted([p.relative_to(root) for p in hyperplasia_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
+    insufficient_slide_paths = sorted([p.relative_to(root) for p in insufficient_slide_dir.glob("*.isyntax")])
+    proliferative_slide_paths = sorted([p.relative_to(root) for p in proliferative_slide_dir.glob("*.isyntax")])
+    secretory_slide_paths = sorted([p.relative_to(root) for p in secretory_slide_dir.glob("*.isyntax")])
+    menstrual_slide_paths = sorted([p.relative_to(root) for p in  menstrual_slide_dir.glob("*.isyntax")])
+    innactive_atrophic_slide_paths = sorted([p.relative_to(root) for p in innactive_atrophic_slide_dir.glob("*.isyntax")])
+    hormonal_slide_paths = sorted([p.relative_to(root) for p in hormonal_slide_dir.glob("*.isyntax")])
+
+
+    #annotation paths
+    adenocarcinoma_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_anno_dir.glob("*.txt")])
+    carcinosarcoma_anno_paths = sorted([p.relative_to(root) for p in carcinosarcoma_anno_dir.glob("*.txt")])
+    sarcoma_anno_paths = sorted([p.relative_to(root) for p in sarcoma_anno_dir.glob("*.txt")])
+    hyperplasia_anno_paths = sorted([p.relative_to(root) for p in hyperplasia_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    insufficient_anno_paths = sorted([p.relative_to(root) for p in insufficient_anno_dir.glob("*.txt")])
+    proliferative_anno_paths = sorted([p.relative_to(root) for p in proliferative_anno_dir.glob("*.txt")])
+    secretory_anno_paths = sorted([p.relative_to(root) for p in secretory_anno_dir.glob("*.txt")])
+    menstrual_anno_paths = sorted([p.relative_to(root) for p in  menstrual_anno_dir.glob("*.txt")])
+    innactive_atrophic_anno_paths = sorted([p.relative_to(root) for p in innactive_atrophic_anno_dir.glob("*.txt")])
+    hormonal_anno_paths = sorted([p.relative_to(root) for p in Hormonal_anno_dir.glob("*.txt")])
+
     df = pd.DataFrame()
-    df["slide"] = test_slide_paths 
-    df["annotation"] = test_annotations_paths
-    df["label"] = test_slide_level_labels
-    df["tags"] = test_tags
+    df["slide"] = adenocarcinoma_slide_paths + carcinosarcoma_slide_paths + sarcoma_slide_paths + hyperplasia_slide_paths + other_slide_paths + insufficient_slide_paths + proliferative_slide_paths + \
+                secretory_slide_paths +  menstrual_slide_paths + innactive_atrophic_slide_paths + hormonal_slide_paths
+
+    df["annotations"] = adenocarcinoma_anno_paths + carcinosarcoma_anno_paths + sarcoma_anno_paths + hyperplasia_anno_paths + other_anno_paths + insufficient_anno_paths + proliferative_anno_paths + \
+                secretory_anno_paths +  menstrual_anno_paths + innactive_atrophic_anno_paths + hormonal_anno_paths
+
+    df["label"] = ['malignant'] * len(adenocarcinoma_slide_paths) + ['malignant'] * len(carcinosarcoma_slide_paths) + ['malignant'] * len(sarcoma_slide_paths) + ['malignant'] * len(hyperplasia_slide_paths) + ['malignant'] *  len(other_slide_paths) + ['insufficient'] * len(insufficient_slide_paths) + ['other_benign'] * len(proliferative_slide_paths) + ['other_benign'] * len(secretory_slide_paths) +   ['othe_-benign'] * len(menstrual_slide_paths) +  ['other_benign'] * len(innactive_atrophic_slide_paths) + ['other_benign'] * len(hormonal_slide_paths)
+
+
+
+    df["tags"] = ['denocarcinoma'] * len(adenocarcinoma_slide_paths) + ['carcinosarcoma'] * len(carcinosarcoma_slide_paths) + ['sarcoma'] * len(sarcoma_slide_paths) + ['hyperplasia'] * len(hyperplasia_slide_paths) + ['other'] *  len(other_slide_paths) + ['insufficient'] * len(insufficient_slide_paths) + ['proliferative'] * len(proliferative_slide_paths) + ['secretory'] * len(secretory_slide_paths) +   ['menstrual'] * len(menstrual_slide_paths) +  ['innactive_atrophic'] * len(innactive_atrophic_slide_paths) + ['hormonal'] * len(hormonal_slide_paths)
+
 
     return Endometrial(root, df)
 

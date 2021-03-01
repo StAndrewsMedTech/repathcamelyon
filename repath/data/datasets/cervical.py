@@ -18,7 +18,7 @@ class Cervical_subCategories(Cervical):
     
     @property
     def labels(self) -> Dict[str, int]:
-        return {"CIN1": 0, "HPV":1 , "CIN2": 2, "CIN3": 3, "Squamous carcinoma": 4, "Adenocarcinoma": 5, "CGIN": 6, "Other": 7 , "Normal/inflammation": 8}
+        return {"cin1": 0, "hpv":1 , "cin2": 2, "cin3": 3, "squamous_carcinoma": 4, "adenocarcinoma": 5, "cgin": 6, "other": 7 , "normal_inflammation": 8}
 
 
 class Cervical(Dataset):
@@ -26,7 +26,7 @@ class Cervical(Dataset):
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path) -> AnnotationSet:
-        group_labels = {"Low Grade": "low_grade", "High Grade": "high_grade", "Malignant": "malignant", "Normal/inflammation": "normal_inflammation"}
+        group_labels = {"low_grade": "low_grade", "high_grade": "high_grade", "malignant": "malignant", "Normal/inflammation": "normal_inflammation"}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["low_grade",  "high_grade",  "malignant", "normal_inflammation"]
         return AnnotationSet(annotations, self.labels, labels_order, "low_grade")
@@ -38,11 +38,11 @@ class Cervical(Dataset):
     ## How to put sub category labels here?
     @property
     def labels(self) -> Dict[str, int]:
-        return {"Background" : 0, "Low Grade": 1 , "High Grade": 2 ,  "Malignant": 3, "Normal/inflammation": 4}
+        return {"background" : 0, "low_grade": 1 , "high_grade": 2 ,  "malignant": 3, "normal_inflammation": 4}
 
     @property
     def slide_labels(self) -> Dict[str, int]:
-        return {"Low Grade": 1 , "High Grade": 2 ,  "Malignant": 3, "Normal/inflammation": 4}
+        return {"low_grade": 1 , "high_grade": 2 ,  "malignant": 3, "normal_inflammation": 4}
 
 def training():
      """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
@@ -51,42 +51,67 @@ def training():
         DataFrame (pd.DataFrame): Train data frame
     """
     # set up the paths to the slides and annotations
-    root = project_root() / "data" / "cervical" / "raw" 
+    root = project_root() / "data" / "cervical" / "raw" / "training" 
     annotations_dir = root / "annotations"
     
-    train_slide_dir = root / "train"
+    #slide directories    
+    cin1_slide_dir = root / "low_grade" / "cin1"
+    hpv_slide_dir = root / "low_grade" / "hpv"
+    cin2_slide_dir = root / "high_grade" / "cin2"
+    cin3_slide_dir = root / "high_grade" / "cin3"
+    cgin_slide_dir = root / "malignant" / "cgin"
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
+    other_slide_dir = root / "malignant" / "other"
+    Normal_slide_dir = root / "normal_inflammation"
 
-    #train  annotations
-    train_annotation_dir = annotations_dir / "train"
-    
-    # all paths are relative to the dataset 'root'
-    train_annotation_paths = sorted([p.relative_to(root) for p in train_annotations_dir.glob("*.txt")])
-    train_slide_paths = sorted([p.relative_to(root) for p in train_slide_dir.glob("*.isyntax")])
+    #annotation directories
+    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
+    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
+    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
+    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
+    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
+    other_anno_dir = annotations_dir / "malignant "/ "other"
+    normal_anno_dir = annotations_dir / "normal_inflammation"
 
-    # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
-    
-    #train slides info
-    train_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'train']
-  
-    #get slide level labels
-    train_slides_labels_df = train_slides_info['Category']
-    
-    #convert labels dataframe to a list
-    train_slide_level_labels = train_slides_labels_df.values.tolist()
-    
-    
-    #tags shows the sub-category labels
-    train_tags_df = train_slides_info['subCategory']
-    train_tags = train_tags_df.values.tolist()
-    train_tags = ', '.join(train_tags)
-   
-    # turn them into a data frame and pad with empty annotation paths
+
+
+    #slide paths
+    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
+    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
+    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
+    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
+    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
+    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
+    normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
+
+    #annotation paths
+    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
+    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
+    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
+    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
+    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
+    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
+    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
+
+
     df = pd.DataFrame()
-    df["slide"] = train_slide_paths 
-    df["annotation"] =  train_annotation_paths 
-    df["label"] = train_slide_level_labels
-    df["tags"] = train_tags 
+    df["slide"] = cin1_slide_paths + hpv_slide_paths + cin2_slide_paths + cin3_slide_paths + cgin_slide_dir_paths + adeno_slide_paths +  squamou_slide_paths + other_slide_paths + Normal_slide_paths
+    
+    df["annotations"] = cin1_anno_paths + hpv_anno_paths + cin2_anno_paths + cin3_anno_paths + cgin_anno_dir_paths + adeno_anno_paths +  squamou_anno_paths + other_anno_paths + normal_anno_paths
+
+    df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
+                  ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
+                  ['normal_inflammation'] * len(normal_slide_paths)
+
+    df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
+                 ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
 
     return Cervical(root, df)
 
@@ -98,40 +123,69 @@ def testing():
     Returns:
         DataFrame (pd.DataFrame): Test data frame
     """
-    # set up the paths to the slides and annotations
-    root = project_root() / "data" / "cervical" / "raw" / "test"
+    
+     # set up the paths to the slides and annotations
+    root = project_root() / "data" / "cervical" / "raw" / "testing"
     annotations_dir = root / "annotations"
-    test_slide_dir = root / "test"
-    
-    test_annotation_dir = annotations_dir / "test"
 
-    # all paths are relative to the dataset 'root'
-    test_slide_paths = sorted([p.relative_to(root) for p in test_slide_dir.glob("*.isyntax")])
-    test_annotation_paths = sorted([p.relative_to(root) for p in test_annotations_dir.glob("*.txt")])
+    #slide directories    
+    cin1_slide_dir = root / "low_grade" / "cin1"
+    hpv_slide_dir = root / "low_grade" / "hpv"
+    cin2_slide_dir = root / "high_grade" / "cin2"
+    cin3_slide_dir = root / "high_grade" / "cin3"
+    cgin_slide_dir = root / "malignant" / "cgin"
+    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
+    other_slide_dir = root / "malignant" / "other"
+    Normal_slide_dir = root / "normal_inflammation"
 
-    # load cervical data info
-    cervical_data_info = pd.read_csv(root / 'iCAIRD_Cervical_Data.csv')
-    
-    #test slides info
-    train_slides_info =  cervical_data_info.loc[cervical_data_info['train/test/valid'] == 'test']
-   
-    #get slide level labels
-    test_slides_labels_df = test_slides_info['Category']
-   
-    #convert labels dataframe to a list
-    test_slide_level_labels = test_slides_labels_df.values.tolist()
-    
-    #tags shows the sub-category labels
-    test_tags_df = test_slides_info['subCategory']
-    test_tags = test_tags_df.values.tolist()
-    test_tags = ', '.join(test_tags)
-   
-    # turn them into a data frame and pad with empty annotation paths
+    #annotation directories
+    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
+    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
+    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
+    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
+    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
+    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
+    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
+    other_anno_dir = annotations_dir / "malignant "/ "other"
+    normal_anno_dir = annotations_dir / "normal_inflammation"
+
+
+     #slide paths
+    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
+    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
+    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
+    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
+    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
+    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
+    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
+    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
+    normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
+
+    #annotation paths
+    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
+    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
+    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
+    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
+    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
+    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
+    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
+    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
+    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
+
+
     df = pd.DataFrame()
-    df["slide"] = test_slide_paths 
-    df["annotation"] = test_annotations_paths
-    df["label"] = test_slide_level_labels
-    df["tags"] = test_tags
+    df["slide"] = cin1_slide_paths + hpv_slide_paths + cin2_slide_paths + cin3_slide_paths + cgin_slide_dir_paths + adeno_slide_paths +  squamou_slide_paths + other_slide_paths + Normal_slide_paths
+
+    df["annotations"] = cin1_anno_paths + hpv_anno_paths + cin2_anno_paths + cin3_anno_paths + cgin_anno_dir_paths + adeno_anno_paths +  squamou_anno_paths + other_anno_paths + normal_anno_paths
+
+    df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
+                  ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
+                  ['normal_inflammation'] * len(normal_slide_paths)
+
+    df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
+                 ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
+
 
     return Cervical(root, df)
 
