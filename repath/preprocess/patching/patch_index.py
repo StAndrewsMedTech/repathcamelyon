@@ -227,7 +227,7 @@ class SlidePatchSet(PatchSet):
             patchset = cls(slide_idx, dataset, size, level, df)
             return patchset
 
-        @classmethod
+    @classmethod
     def index_slide_blank(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
         """create an index of blank slides for testing tissue detectors
 

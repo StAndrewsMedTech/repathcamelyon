@@ -52,7 +52,7 @@ def evaluate_on_device(model, device, loader, num_classes, device_idx):
             sm = torch.nn.Softmax(1)
             output_sm = sm(output)
             pred_prob = output_sm.cpu().numpy()  # rows: batch_size, cols: num_classes
-
+            print("pred_prob:", pred_prob)
             start = idx * loader.batch_size
             end = start + pred_prob.shape[0]
             prob_out[start:end, :] = pred_prob

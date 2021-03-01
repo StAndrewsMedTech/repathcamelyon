@@ -24,18 +24,19 @@ from torchvision.transforms import Compose
 import os
 
 
-def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int]) -> 'SlidePatchSetResults':
+def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int, int, int, Path, str, str, List]) -> 'SlidePatchSetResults':
     
-    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name = args
+    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name, augments = args
     device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
     results_all = []
     for sps in si:
-        dataset = SlideDataset(sps, transform)
+        dataset = SlideDataset(sps, transform, augments)
         dataset.open_slide()
         test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size)
         just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
         num_classes = len(just_patch_classes)
         probs_out = evaluate_on_device(model, device, test_loader, num_classes, device_idx)
+        print(probs_out)
         ntransforms = 1
         npreds = int(len(dataset) * ntransforms)
         probs_out = probs_out[0:npreds, :]
@@ -132,8 +133,7 @@ class SlidesIndexResults(SlidesIndex):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
         for ps in self.patches:
-            print("ps:", ps)
-            # save out the csv file for this slide
+            # results and heatmaps are written when predicted do not need to write again just need paths
             csv_path = self.output_dir / self.results_dir_name / ps.slide_path.with_suffix('.csv')
             png_path = self.output_dir / self.heatmap_dir_name / ps.slide_path.with_suffix('.png')
 
@@ -162,11 +162,8 @@ class SlidesIndexResults(SlidesIndex):
 
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
-                border=0, jitter=0) -> 'SlidesIndexResults':
-        #print(len(slide_index))
+                border=0, jitter=0, augments=None) -> 'SlidesIndexResults':
         ### temp for debugging
-        print("predict func")
-        slide_index = slide_index[0:10]
         print("slide index len: ", len(slide_index))
         processed = []
         not_processed = []
@@ -180,6 +177,8 @@ class SlidesIndexResults(SlidesIndex):
             csv_file_path = os.path.join((output_dir / results_dir_name / basename), csv_file)
             heatmap_file_path = os.path.join((output_dir / heatmap_dir_name / basename ), heatmap_file)
             if os.path.exists(csv_file_path) and os.path.exists(heatmap_file_path):
+                csv_file = pd.read_csv(csv_file_path)
+                slide_index[i].patches = csv_file
                 processed.append(slide_index[i])
             else:
                 not_processed.append(slide_index[i])    
@@ -187,6 +186,8 @@ class SlidesIndexResults(SlidesIndex):
         not_processed = SlidesIndex(slide_index.dataset, not_processed)
         
         ngpus = torch.cuda.device_count()
+        ## temp test are we overloading cpus?
+        ngpus = 1
         gpu_lists = [ [] for _ in range(ngpus) ]
         while len(not_processed) > 0:
             for n in range(ngpus):
@@ -194,13 +195,13 @@ class SlidesIndexResults(SlidesIndex):
                     gpu_lists[n].append(not_processed.patches.pop())
         not_processed.patches = gpu_lists 
         # spawn a process to predict for each slide
-        slides = zip(not_processed, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size] * 
-                        ngpus, [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, [heatmap_dir_name]*ngpus)
+        slides = zip(not_processed, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size]*ngpus, 
+            [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, 
+            [heatmap_dir_name]*ngpus, [augments]*ngpus)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()
         pool.join()
-        results = [item for sublist in results for item in sublist]
         results.append(processed)
-        print(results[0])
+        results = [item for sublist in results for item in sublist] 
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)

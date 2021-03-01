@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.metrics import roc_curve, precision_recall_curve, auc, accuracy_score, confusion_matrix, cohen_kappa_score
 
 from repath.preprocess.patching import CombinedIndex
+from repath.postprocess.results import SlidesIndexResults
 from repath.utils.convert import remove_item_from_dict
 from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve, save_conf_mat_plot, save_conf_mat_plot_ci
 

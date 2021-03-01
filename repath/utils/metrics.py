@@ -4,7 +4,7 @@ import numpy as np
 
 def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=None):
     title_lab = f'{title}\n score = {round(summary_value, 4)}'
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,6))
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
     fig.suptitle(title_lab, fontsize=10, y=1.05)
@@ -14,6 +14,7 @@ def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=N
         xleft = x_axis_lim[0]
         xright = x_axis_lim[1]
     plt.xlim(xleft, xright)
+    plt.tight_layout()
     return plt
 
 
@@ -50,7 +51,7 @@ def fpr_tpr_curve(true, probabilities, pos_label, recall_levels):
 def plotROCCI(xvalues, yvalues, xcivalues, ycivalues, summary_value, summary_valueCI, title, xlabel, ylabel,
               x_axis_lim=None):
     title_lab = f'{title}\n score = {round(summary_value, 4)}, (range {round(summary_valueCI[0], 4)}, {round(summary_valueCI[1], 4)})'
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,6))
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
     fig.suptitle(title_lab, fontsize=10, y=1.05)
@@ -61,6 +62,7 @@ def plotROCCI(xvalues, yvalues, xcivalues, ycivalues, summary_value, summary_val
         xleft = x_axis_lim[0]
         xright = x_axis_lim[1]
     plt.xlim(xleft, xright)
+    plt.tight_layout()
     return plt
 
 
@@ -75,7 +77,7 @@ def conf_mat_raw(true, predicted, labels):
 
 
 def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
-    fig, ax = plt.subplots(figsize=(8,6))
+    fig, ax = plt.subplots(figsize=(8,8))
     n_classes = cm.shape[0]
     cmap = 'Greys'
 
@@ -109,7 +111,7 @@ def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
 
     ax.set_ylim((n_classes - 0.5, -0.5))
-
+    ax.tight_layout()
     return ax
 
 
@@ -123,7 +125,7 @@ def save_conf_mat_plot(cm, labels, title, results_dir):
 
 
 def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='true'):
-    fig, ax = plt.subplots(figsize=(8,6))
+    fig, ax = plt.subplots(figsize=(8,8))
     n_classes = cm.shape[0]
     cmap = 'Greys'
 
@@ -161,7 +163,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
 
     ax.set_ylim((n_classes - 0.5, -0.5))
-
+    ax.tight_layout()
     return ax
 
 def save_conf_mat_plot_ci(cm, labels, title, results_dir):

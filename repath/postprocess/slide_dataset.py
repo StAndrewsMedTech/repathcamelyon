@@ -7,11 +7,12 @@ from repath.data.slides.slide import Region
 
 
 class SlideDataset(Dataset):
-    def __init__(self, ps: 'PatchSet', transform = None) -> None:
+    def __init__(self, ps: 'PatchSet', transform = None, augments = None) -> None:
         super().__init__()
         self.ps = ps
         self.slide = ps.dataset.slide_cls(ps.abs_slide_path)
         self.transform = transform
+        self.augments = augments
 
     def open_slide(self):
         self.slide.open()
@@ -33,5 +34,10 @@ class SlideDataset(Dataset):
         image = self.to_patch(patch_info)
         label = patch_info.label
         if self.transform is not None:
-            image = self.transform(image)
+            if self.augments is None:
+                image = self.transform(image)
+            else: 
+                augment = augments[patch_info.transform - 1]
+                image = augment(image)
+                image = self.transform(image)
         return image, label

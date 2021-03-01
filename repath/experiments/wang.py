@@ -181,16 +181,17 @@ def inference_on_train() -> None:
     train_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
 
     # original training data indexes are overlapping we need non overlapping grid for inference
-    train_ol_slides = [pat.slide_path for pat in train_overlapping.patches]
-    train_data_cut_down = camelyon16.training()
-    mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
-    train_data_cut_down.paths = train_data_cut_down.paths[mask]
+    # train_ol_slides = [pat.slide_path for pat in train_overlapping.patches]
+    # train_data_cut_down = camelyon16.training()
+    # mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
+    # train_data_cut_down.paths = train_data_cut_down.paths[mask]
 
-    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
-    train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
-    train_patches_grid.save(experiment_root / "train_index_grid")
+    # patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    # train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
+    # train_patches_grid.save(experiment_root / "train_index_grid")
 
-    train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
+    # train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
         RandomCrop((224, 224)),
@@ -198,7 +199,7 @@ def inference_on_train() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
+    train_results16 = SlidesIndexResults.predict(train_overlapping, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name)
     train_results16.save()
 
@@ -225,7 +226,7 @@ def create_hnm_patches() -> None:
 
     train_results.patches_df = hnm_patches_df
 
-    #train_results.save_patches(experiment_root / "training_patches", affix='-hnm', add_patches=True)
+    train_results.save_patches(experiment_root / "training_patches", affix='-hnm', add_patches=True)
 
 
 def retrain_patch_classifier_hnm() -> None:
@@ -252,7 +253,7 @@ def retrain_patch_classifier_hnm() -> None:
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
-        dirpath=experiment_root / "patch_model",
+        dirpath=experiment_root / "patch_model_hnm",
         filename=f"checkpoint.ckpt",
         save_top_k=1,
         mode="max",
@@ -267,7 +268,7 @@ def retrain_patch_classifier_hnm() -> None:
     )
 
     # create a logger
-    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
 
     # train our model
     classifier = PatchClassifier()
