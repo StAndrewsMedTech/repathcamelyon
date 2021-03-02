@@ -1,7 +1,7 @@
 # This should cover Visual Studio Code and JetBrains IDEs
 
 .vscode/*
-!.vscode/settings.json
+!.vscode/settings.
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -85,9 +85,6 @@ fabric.properties
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
-# C extensions
-*.so
 
 # Distribution / packaging
 .Python
