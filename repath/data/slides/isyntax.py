@@ -38,8 +38,9 @@ class Slide(SlideBase):
 
         # in isyntax each level has a different origin and dimensions
         # that are specifier in the level 0 coordinate system
-        self.origins = [self.get_origin(lvl) for lvl in range(self.max_level)]
+        # self.origins = [self.get_origin(lvl) for lvl in range(self.max_level)]
         self.dims = [self.get_dimension(lvl) for lvl in range(self.max_level)]
+        # self.dims = [Size(3000, 1000)] * 8
 
     def close(self) -> None:
         self.input.close()
@@ -74,7 +75,8 @@ class Slide(SlideBase):
             w = size.width * scale
             h = size.height * scale
 
-            origin = self.origins[level]
+            #origin = self.origins[level]
+            origin = Point(0, 0)
             range = [
                 x + origin.x,
                 x + origin.x + w,
@@ -142,7 +144,7 @@ class Slide(SlideBase):
 
     def get_envelope_rect(self, level: int) -> DataEnvelopeRect:
         envelopes = self.source_view.dataEnvelopes(level)
-        rect = envelopes.asRectangles()[self.image_index]
+        rect = envelopes.asRectangles()
         return rect
 
     def get_origin(self, level: int) -> Point:
@@ -151,7 +153,15 @@ class Slide(SlideBase):
         return origin
 
     def get_dimension(self, level: int) -> Size:
-        start_x, end_x, start_y, end_y = self.get_envelope_rect(level)
+        start_x = 0 
+        start_y = 0
+        end_x = 0
+        end_y = 0
+        rects = self.get_envelope_rect(level)
+        for rect in rects:
+            _, rect_end_x, _, rect_end_y = rect
+            end_x = max(end_x, rect_end_x)
+            end_y = max(end_y, rect_end_y)
         width = end_x - start_x
         height = end_y - start_y
         return Size(width // 2 ** level, height // 2 ** level)

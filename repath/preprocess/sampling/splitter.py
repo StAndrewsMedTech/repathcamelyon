@@ -11,7 +11,7 @@ from repath.preprocess.patching import SlidesIndex
 Global stuff
 """
 def split_endometrial(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIndex, SlidesIndex]:
-     print("Splitting Endometrial")
+    print("Splitting Endometrial")
 
     # get summaries of total patch classes for each slide
     summaries = index.summary()
@@ -64,11 +64,11 @@ def split_endometrial(index: SlidesIndex, train_percent: float) -> Tuple[SlidesI
 
         total_malignant_patches = np.sum(summaries.malignant)
         total_insufficient_patches = np.sum(summaries.insufficient)
-        total_other_benign_patches = np.sum(summaries.other_benign
+        total_other_benign_patches = np.sum(summaries.other_benign)
 
         train_malignant_patches = np.sum(train_summaries.malignant)
         train_insufficient_patches = np.sum(train_summaries.insufficient)
-        train_other_benign_patches = np.sum(train_summaries.other_benign
+        train_other_benign_patches = np.sum(train_summaries.other_benign)
 
 
         valid_malignant_patches = np.sum(valid_summaries.malignant)

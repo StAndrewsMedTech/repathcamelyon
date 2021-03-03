@@ -181,16 +181,16 @@ def inference_on_train() -> None:
     train_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
 
     # original training data indexes are overlapping we need non overlapping grid for inference
-    # train_ol_slides = [pat.slide_path for pat in train_overlapping.patches]
-    # train_data_cut_down = camelyon16.training()
-    # mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
-    # train_data_cut_down.paths = train_data_cut_down.paths[mask]
+    train_ol_slides = [pat.slide_path for pat in train_overlapping.patches]
+    train_data_cut_down = camelyon16.training()
+    mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
+    train_data_cut_down.paths = train_data_cut_down.paths[mask]
 
     # patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
     # train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
     # train_patches_grid.save(experiment_root / "train_index_grid")
 
-    # train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
+    train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
@@ -199,7 +199,7 @@ def inference_on_train() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    train_results16 = SlidesIndexResults.predict(train_overlapping, classifier, transform, 128, output_dir16,
+    train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name)
     train_results16.save()
 

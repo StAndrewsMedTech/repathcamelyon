@@ -19,6 +19,7 @@ from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.data.slides import Region
 from repath.utils.convert import remove_item_from_dict
+from repath.utils.geometry import Size
 
 
 class PatchSet(Sequence):
@@ -218,7 +219,13 @@ class SlidePatchSet(PatchSet):
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             annotations = dataset.load_annotations(annotation_path)
-            labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
+            if patch_finder.labels_level > len(slide.dimensions):
+                lev_diff = patch_finder.labels_level - len(slide.dimensions)
+                max_level_dim = slide.dimensions[-1]
+                requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
+                labels_shape = requested_level_size.as_shape()
+            else:
+                labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             scale_factor = 2 ** patch_finder.labels_level
             labels_image = annotations.render(labels_shape, scale_factor)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))

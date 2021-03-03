@@ -75,11 +75,11 @@ class SlideBase(metaclass=ABCMeta):
             request_level = level
 
         size = self.dimensions[request_level]
-        region = Region(level=request_level, location=(0, 0), size=size)
+        region = Region(level=request_level, location=Point(0, 0), size=size)
         im = self.read_region(region)
         im = im.convert("RGB")
         im = np.asarray(im)
-
+        
         if level != request_level:
             h, w, _ = im.shape
             lev_diff = level - request_level

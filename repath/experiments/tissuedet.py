@@ -4,6 +4,7 @@ from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedInd
 from repath.preprocess.tissue_detection import TissueDetector, TissueDetectorGreyScale, TissueDetectorAll, TissueDetectorOTSU
 from repath.utils.metrics import conf_mat_plot_heatmap
 from repath.utils.paths import project_root
+from repath.utils.seeds import set_seed
 
 """
 Global stuff

@@ -36,7 +36,7 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
         just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
         num_classes = len(just_patch_classes)
         probs_out = evaluate_on_device(model, device, test_loader, num_classes, device_idx)
-        print(probs_out)
+        # print(probs_out)
         ntransforms = 1
         npreds = int(len(dataset) * ntransforms)
         probs_out = probs_out[0:npreds, :]
@@ -187,7 +187,7 @@ class SlidesIndexResults(SlidesIndex):
         
         ngpus = torch.cuda.device_count()
         ## temp test are we overloading cpus?
-        ngpus = 1
+        ngpus = 2
         gpu_lists = [ [] for _ in range(ngpus) ]
         while len(not_processed) > 0:
             for n in range(ngpus):
