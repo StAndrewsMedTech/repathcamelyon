@@ -1,4 +1,4 @@
-from repath.preprocess.patching.apply_transform import LiuTransform
+from repath.preprocess.patching.apply_transform import LiuTransform, MultiTransform
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -14,11 +14,14 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 from torchvision.models import inception_v3
 
 from repath.utils.paths import project_root
+from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
+from repath.postprocess.patch_level_results import patch_level_metrics
+from repath.postprocess.results import SlidesIndexResults
 from repath.utils.seeds import set_seed
 
 """
@@ -85,6 +88,9 @@ class PatchClassifier(pl.LightningModule):
             'interval': 'step' 
         }
         return [optimizer], [scheduler]
+
+    def forward(self, x):
+        return self.model(x)
 
 """
 Experiment step
@@ -169,4 +175,136 @@ def train_patch_classifier() -> None:
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
+
+def preprocess_valid_inference():
+    set_seed(global_seed)
+    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original validation data indexes only apply transforms to the tumor patches
+    # for inference we want to apply transforms to all patches
+    # get valid slides in valid slide index (the list of split between valid and train)
+    valid_slides = [pat.slide_path for pat in valid.patches]
+    # create new dataset initially with both training and valid
+    valid_data_cut_down = camelyon16.training()
+    # chop new dataset down to be just slide in valid set
+    mask = [sl in valid_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    # apply transforms for all 
+    apply_transforms = MultiTransform(num_transforms=8)
+    patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=128, stride=128, 
+                                   border=patch_border, jitter=patch_jitter, 
+                                   apply_transforms=apply_transforms)
+    valid_patches_8transforms = SlidesIndex.index_dataset(valid_data_cut_down, tissue_detector, patch_finder)
+    valid_patches_8transforms.save(experiment_root / "valid_index_8transforms")
+
+
+def inference_on_valid16() -> None:
+    set_seed(global_seed)
+    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "inference_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original validation data indexes only apply transforms to the tumor patches
+    # for inference we want to apply transforms to all patches
+    # get valid slides in valid slide index (the list of split between valid and train)
+    valid_slides = [pat.slide_path for pat in valid.patches]
+    # create new dataset initially with both training and valid
+    valid_data_cut_down = camelyon16.training()
+    # chop new dataset down to be just slide in valid set
+    mask = [sl in valid_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    valid_patches_8transforms = SlidesIndex.load(valid_data_cut_down, experiment_root / "valid_index_8transforms")
+
+    transform = Compose([
+        RandomCrop((299, 299)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # create list of augmentations 
+    augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
+                     FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
+
+    valid_results16 = SlidesIndexResults.predict(valid_patches_8transforms, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
+    valid_results16.save()
+
+
+def preprocess_testindex() -> None:
+    set_seed(global_seed)
+    # index all the patches for the camelyon16 dataset
+    test_data = camelyon16.testing()
+    apply_transforms = LiuTransform(label=2, num_transforms=8)
+    patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=128, stride=128, 
+                                   border=patch_border, jitter=patch_jitter, 
+                                   apply_transforms=apply_transforms)
+    test_patches = SlidesIndex.index_dataset(test_data, tissue_detector, patch_finder)
+
+    test_patches.save(experiment_root / "test_index")
+
+
+def inference_on_test16() -> None:
+    set_seed(global_seed)
+    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "test16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "test_index")
+
+    transform = Compose([
+        RandomCrop((299, 299)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # create list of augmentations 
+    augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
+                     FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
+
+    valid_results16 = SlidesIndexResults.predict(valid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
+    valid_results16.save()
+
+
+def calculate_patch_level_results_valid_16() -> None:
+    def patch_dataset_function(modelname: str, splitname: str, dataset: Dataset, ci_yn: bool):
+        # define strings for model and split
+        splitname16 = splitname + '16'
+        results_out_name = "patch_summaries"
+        results_in_name = "results"
+        heatmap_in_name = "heatmaps"
+
+        # set paths for model and split
+        model_dir = experiment_root / modelname
+        splitdirin = model_dir / splitname16
+        splitdirout = model_dir / splitname16 / results_out_name
+
+        # read in predictions
+        split_results = SlidesIndexResults.load(dataset, splitdirin, results_in_name, heatmap_in_name)
+        print(splitdirin)
+        print(len(split_results))
+
+        # calculate patch level results
+        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
+        patch_level_metrics([split_results], splitdirout, title16, ci=ci_yn)
+
+    set_seed(global_seed)
+
+    patch_dataset_function("post_hnm_results", "valid", camelyon16.training(), ci_yn=True)
 

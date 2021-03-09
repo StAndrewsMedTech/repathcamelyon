@@ -3,9 +3,32 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from skimage.color import rgb2hsv, rgb2gray
 from skimage.filters import threshold_otsu
+from skimage.morphology import binary_closing
+
+
+
+class MorphologyTransform(metaclass=ABCMeta):
+    @abstractmethod
+    def __call__(self, image: np.ndarray) -> np.array:
+        raise NotImplementedError
+
+class NullTransform(MorphologyTransform):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
+        """ Does not apply a transform """
+        return image
+
+class SimpleClosingTransform(MorphologyTransform):
+    def __call__(self, image: np.ndarray) -> np.ndarray:
+        """ Applies binary closing transform """
+        mask_out = binary_closing(image)
+        return mask_out
 
 
 class TissueDetector(metaclass=ABCMeta):
+    def __init__(self, morph_transform: MorphologyTransform = NullTransform()) -> None:
+        # assign values
+        self.morph_transform = morph_transform
+
     @abstractmethod
     def __call__(self, image: np.ndarray) -> np.array:
         raise NotImplementedError
@@ -40,6 +63,9 @@ class TissueDetectorOTSU(TissueDetector):
 
         # combine the masks with an OR so any pixel above either threshold counts as foreground
         np_mask = np.logical_or(mask_h, mask_s)
+
+        # apply morphological transforms
+        np_mask = self.morph_transform(np_mask)
         return np_mask
 
 
@@ -61,11 +87,22 @@ class TissueDetectorGreyScale(TissueDetector):
         # convert PIL image to numpy array
         image = np.asarray(image)
 
+        # change pure black to pure white
+        imager = image[:, :, 0] == 0
+        imageg = image[:, :, 1] == 0
+        imageb = image[:, :, 2] == 0
+        image_mask = np.expand_dims(np.logical_and(np.logical_and(imager, imageg), imageb), axis=-1)
+        image = np.where(image_mask, [255,255,255], image)
+        image = np.array(image, dtype=np.uint8)
+
         # convert to gray-scale
         image_grey = rgb2gray(image)
 
         # get masks, any pixel that is less than 0.8
         np_mask = np.less_equal(image_grey, 0.8)
+
+        # apply morphological transforms
+        np_mask = self.morph_transform(np_mask)
 
         return np_mask
 
@@ -87,4 +124,8 @@ class TissueDetectorAll(TissueDetector):
         # get masks, any pixel that is less than 0.8
         np_mask = np.array(np.ones(image.shape[0:2]), dtype=bool)
 
+        # apply morphological transforms
+        np_mask = self.morph_transform(np_mask)
+
         return np_mask
+

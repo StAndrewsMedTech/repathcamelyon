@@ -34,18 +34,18 @@ class TissueDetection(Dataset):
 
 
 def tissue():
-     """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
+    """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
 
     Returns:
         DataFrame (pd.DataFrame): Train data frame
     """
     # set up the paths to the slides and annotations
     root_dir = project_root() / "data" / "icaird_tissue" 
-    image_dir = "root_dir" / "images" 
-    annot_dir = "root_dir" / "annotations"
+    image_dir = root_dir / "images" 
+    annot_dir = root_dir / "annotations"
     
-    annot_paths = sorted([p.relative_to(root) for p in annot_dir.glob("*.txt")])
-    slide_paths = sorted([p.relative_to(root) for p in annot_dir.glob("*.isyntax")])
+    annot_paths = sorted([p.relative_to(root_dir) for p in annot_dir.glob("*.txt")])
+    slide_paths = sorted([p.relative_to(root_dir) for p in image_dir.glob("*.isyntax")])
    
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
@@ -54,4 +54,4 @@ def tissue():
     df["label"] = ["cervical"] * 9 + ["endometrial"] * 7
     df["tags"] = ""
 
-    return TissueDetection(root, df)
+    return TissueDetection(root_dir, df)

@@ -57,3 +57,29 @@ class LiuTransform(ApplyTransforms):
         df_tumor['transform'] = np.tile(list(range(1,self.num_transforms+1)), tumor_rows)
         df = pd.concat([df_normal, df_tumor], axis = 0)
         return df
+
+
+class MultiTransform(ApplyTransforms):
+    def __init__(
+        self, 
+        num_transforms: int
+    ) -> None:
+        self.num_transforms = num_transforms
+
+
+    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        """Adds a transform column to the data frame with value = number_of_transforms for each patch
+
+        Args:
+            df_in (pd.DataFrame): The input dataframe
+
+        Returns:
+            pd.DataFrame: The new dataframe with addetransform column
+        """
+        df = df_in
+        df['transform'] = 1
+        nrows = df.shape[0]
+        df_transform = df.loc[df.index.repeat(self.num_transforms)].reset_index(drop=True)
+        df_transform['transform'] = np.tile(list(range(1,self.num_transforms+1)), nrows)
+
+        return df_transform

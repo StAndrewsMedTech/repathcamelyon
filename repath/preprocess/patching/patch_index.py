@@ -19,6 +19,7 @@ from repath.preprocess.patching.patch_finder import PatchFinder
 from repath.preprocess.tissue_detection.tissue_detector import TissueDetector
 from repath.data.slides import Region
 from repath.utils.convert import remove_item_from_dict
+from repath.utils.geometry import Size
 
 
 class PatchSet(Sequence):
@@ -131,7 +132,7 @@ class CombinedIndex(object):
         ci = cls(cps)
         return ci
 
-    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '') -> None:
+    def save_patches(self, output_dir: Path, transforms: List[transforms.Compose] = None, affix: str = '', add_patches: bool = False) -> None:
         """Saves patches after applying transforms to them for more than one datastes.
 
         Args:
@@ -139,18 +140,19 @@ class CombinedIndex(object):
             transforms (List[transforms.Compose], optional): List of transforms to be applied to each patch. Defaults to None.
             affix (str, optional): A string added to the name of the patch before saving it. Defaults to ''.
         """
-        # check subdirectories exist and delete any existing patches
-        for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
-            # get the patch label as a string
-            labels_dict = remove_item_from_dict(self.datasets[cps_idx].labels, 'background')
-            labels = list(labels_dict.keys())
-            for lab in labels:
-                # ensure the output directory exists
-                output_subdir = output_dir / lab
-                output_subdir.mkdir(parents=True, exist_ok=True)
-                files_in_subdir = output_subdir.glob('*.png')
-                for ff in files_in_subdir:
-                    os.remove(ff)
+        if not add_patches:
+            # check subdirectories exist and delete any existing patches
+            for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
+                # get the patch label as a string
+                labels_dict = remove_item_from_dict(self.datasets[cps_idx].labels, 'background')
+                labels = list(labels_dict.keys())
+                for lab in labels:
+                    # ensure the output directory exists
+                    output_subdir = output_dir / lab
+                    output_subdir.mkdir(parents=True, exist_ok=True)
+                    files_in_subdir = output_subdir.glob('*.png')
+                    for ff in files_in_subdir:
+                        os.remove(ff)
 
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
@@ -217,7 +219,14 @@ class SlidePatchSet(PatchSet):
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             annotations = dataset.load_annotations(annotation_path)
-            labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
+            if patch_finder.labels_level >= len(slide.dimensions):
+                request_level = len(slide.dimensions) - 1
+                lev_diff = patch_finder.labels_level - request_level
+                max_level_dim = slide.dimensions[-1]
+                requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
+                labels_shape = requested_level_size.as_shape()
+            else:
+                labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             scale_factor = 2 ** patch_finder.labels_level
             labels_image = annotations.render(labels_shape, scale_factor)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
@@ -226,7 +235,7 @@ class SlidePatchSet(PatchSet):
             patchset = cls(slide_idx, dataset, size, level, df)
             return patchset
 
-        @classmethod
+    @classmethod
     def index_slide_blank(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
         """create an index of blank slides for testing tissue detectors
 
@@ -242,7 +251,15 @@ class SlidePatchSet(PatchSet):
         slide_path, annotation_path, _, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
-            labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
+            if patch_finder.labels_level >= len(slide.dimensions):
+                request_level = len(slide.dimensions) - 1
+                lev_diff = patch_finder.labels_level - request_level
+                max_level_dim = slide.dimensions[-1]
+                requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
+                labels_shape = requested_level_size.as_shape()
+
+            else:
+                labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             labels_image = np.ones(labels_shape)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0

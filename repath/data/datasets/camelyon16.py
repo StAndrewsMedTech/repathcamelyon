@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -26,7 +27,7 @@ class Camelyon16(Dataset):
         Returns:
             AnnotationSet which includes: annotations, labels, labels_order and fill_label
         """
-        group_labels = {"Tumor": "tumor", "_0": "tumor", "_1": 'tumor', "_2": 'normal'}
+        group_labels = {"Tumor": "tumor", "_0": "tumor", "_1": 'tumor', "_2": 'normal', 'Exclusion': 'normal', 'None': 'normal'}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["background", "tumor", "normal"]
         return AnnotationSet(annotations, self.labels, labels_order, "normal")
@@ -95,7 +96,7 @@ def testing():
     slide_paths = sorted([p.relative_to(root) for p in slide_dir.glob("*.tif")])
     annotation_paths = sorted([p.relative_to(root) for p in annotations_dir.glob("*.xml")])
 
-    #get the slide namme
+    #get the slide name
     slide_names = []
     for path in slide_paths:
         head, tail = os.path.split(path)
