@@ -162,9 +162,10 @@ class SlidesIndexResults(SlidesIndex):
 
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
-                border=0, jitter=0, augments=None) -> 'SlidesIndexResults':
+                border=0, jitter=0, augments=None, nthreads=None) -> 'SlidesIndexResults':
+        
         ### temp for debugging
-        print("slide index len: ", len(slide_index))
+
         processed = []
         not_processed = []
         for i in range(len(slide_index)):
@@ -185,23 +186,24 @@ class SlidesIndexResults(SlidesIndex):
         
         not_processed = SlidesIndex(slide_index.dataset, not_processed)
         
-        ngpus = torch.cuda.device_count()
-        ## temp test are we overloading cpus?
-        ngpus = 2
-        gpu_lists = [ [] for _ in range(ngpus) ]
+        if nthreads == None:
+            nthreads = torch.cuda.device_count()
+
+        gpu_lists = [ [] for _ in range(nthreads) ]
         while len(not_processed) > 0:
-            for n in range(ngpus):
+            for n in range(nthreads):
                 if len(not_processed) > 0:
                     gpu_lists[n].append(not_processed.patches.pop())
         not_processed.patches = gpu_lists 
         # spawn a process to predict for each slide
-        slides = zip(not_processed, range(ngpus), [transform]*ngpus, [model]*ngpus, [batch_size]*ngpus, 
-            [border] *ngpus, [jitter] * ngpus, [output_dir] *ngpus, [results_dir_name]*ngpus, 
-            [heatmap_dir_name]*ngpus, [augments]*ngpus)
+        slides = zip(not_processed, range(nthreads), [transform]*nthreads, [model]*nthreads, [batch_size]*nthreads, 
+            [border] *nthreads, [jitter] * nthreads, [output_dir] *nthreads, [results_dir_name]*nthreads, 
+            [heatmap_dir_name]*nthreads, [augments]*nthreads)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()
         pool.join()
         results.append(processed)
         results = [item for sublist in results for item in sublist] 
+
         return cls(slide_index.dataset, results, output_dir, results_dir_name, heatmap_dir_name)

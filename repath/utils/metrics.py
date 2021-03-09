@@ -50,11 +50,13 @@ def fpr_tpr_curve(true, probabilities, pos_label, recall_levels):
 
 def plotROCCI(xvalues, yvalues, xcivalues, ycivalues, summary_value, summary_valueCI, title, xlabel, ylabel,
               x_axis_lim=None):
-    title_lab = f'{title}\n score = {round(summary_value, 4)}, (range {round(summary_valueCI[0], 4)}, {round(summary_valueCI[1], 4)})'
+    title_lab = f'{title} \n score = {round(summary_value, 4)}, (range {round(summary_valueCI[0], 4)}, {round(summary_valueCI[1], 4)})'
     fig = plt.figure(figsize=(8,6))
-    plt.xlabel(xlabel, fontsize=12)
-    plt.ylabel(ylabel, fontsize=12)
-    fig.suptitle(title_lab, fontsize=10, y=1.05)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14, x=1.005)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    fig.suptitle(title_lab, fontsize=14)
     plt.plot(xvalues, yvalues, '-', color='#000000')
     plt.fill_between(x=xcivalues, y1=ycivalues[0, :], y2=ycivalues[1, :], facecolor='grey', alpha=0.5)
     xleft, xright = plt.xlim()
@@ -111,7 +113,7 @@ def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
 
     ax.set_ylim((n_classes - 0.5, -0.5))
-    ax.tight_layout()
+    plt.tight_layout()
     return ax
 
 
@@ -163,7 +165,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
     ax.tick_params(bottom=True, labelbottom=True, top=False, labeltop=False)
 
     ax.set_ylim((n_classes - 0.5, -0.5))
-    ax.tight_layout()
+    plt.tight_layout()
     return ax
 
 def save_conf_mat_plot_ci(cm, labels, title, results_dir):

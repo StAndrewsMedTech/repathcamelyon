@@ -37,7 +37,7 @@ class SlideDataset(Dataset):
             if self.augments is None:
                 image = self.transform(image)
             else: 
-                augment = augments[patch_info.transform - 1]
+                augment = self.augments[patch_info.transform - 1]
                 image = augment(image)
                 image = self.transform(image)
         return image, label

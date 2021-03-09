@@ -219,8 +219,9 @@ class SlidePatchSet(PatchSet):
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             annotations = dataset.load_annotations(annotation_path)
-            if patch_finder.labels_level > len(slide.dimensions):
-                lev_diff = patch_finder.labels_level - len(slide.dimensions)
+            if patch_finder.labels_level >= len(slide.dimensions):
+                request_level = len(slide.dimensions) - 1
+                lev_diff = patch_finder.labels_level - request_level
                 max_level_dim = slide.dimensions[-1]
                 requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
                 labels_shape = requested_level_size.as_shape()
@@ -250,7 +251,15 @@ class SlidePatchSet(PatchSet):
         slide_path, annotation_path, _, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
-            labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
+            if patch_finder.labels_level >= len(slide.dimensions):
+                request_level = len(slide.dimensions) - 1
+                lev_diff = patch_finder.labels_level - request_level
+                max_level_dim = slide.dimensions[-1]
+                requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
+                labels_shape = requested_level_size.as_shape()
+
+            else:
+                labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             labels_image = np.ones(labels_shape)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0

@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import copy
 from pathlib import Path
 from typing import List, NamedTuple
 
@@ -78,13 +79,17 @@ class SlideBase(metaclass=ABCMeta):
         region = Region(level=request_level, location=Point(0, 0), size=size)
         im = self.read_region(region)
         im = im.convert("RGB")
-        im = np.asarray(im)
         
         if level != request_level:
-            h, w, _ = im.shape
+            w, h = im.size
             lev_diff = level - request_level
             new_w = int(w / 2 ** lev_diff)
             new_h = int(h / 2 ** lev_diff)
-            im = im.resize((new_w, new_h))
+            new_im = copy.deepcopy(im)
+            new_im = new_im.resize((new_w, new_h))
+        else:
+            new_im = copy.deepcopy(im)
 
-        return im
+        new_im = np.asarray(new_im)
+
+        return new_im
