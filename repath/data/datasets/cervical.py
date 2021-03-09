@@ -1,16 +1,8 @@
-from pathlib import Path
-from typing import Dict, Tuple
-
-from sklearn.metrics import roc_curve, precision_recall_curve, auc
-import numpy as np
+import os
 import pandas as pd
-from repath.data.annotations import AnnotationSet
-from repath.data.annotations.asapxml import load_annotations
-from repath.data.datasets import Dataset
-from repath.data.slides.openslide import Slide
-from repath.data.slides import SlideBase
+from pathlib import Path
 from repath.utils.paths import project_root
-from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve
+
 
 class Cervical_subCategories(Cervical):
      def __init__(self, root: Path, paths: pd.DataFrame) -> None:
@@ -51,144 +43,47 @@ def training():
         DataFrame (pd.DataFrame): Train data frame
     """
     # set up the paths to the slides and annotations
-    root = project_root() / "data" / "cervical" / "raw" / "training" 
+    root = project_root() / "iCAIRD"  
     annotations_dir = root / "annotations"
     
-    #slide directories    
-    cin1_slide_dir = root / "low_grade" / "cin1"
-    hpv_slide_dir = root / "low_grade" / "hpv"
-    cin2_slide_dir = root / "high_grade" / "cin2"
-    cin3_slide_dir = root / "high_grade" / "cin3"
-    cgin_slide_dir = root / "malignant" / "cgin"
-    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
-    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
-    other_slide_dir = root / "malignant" / "other"
-    Normal_slide_dir = root / "normal_inflammation"
+    csv_path = root / "iCAIRD_Cervical_Data.csv"
 
-    #annotation directories
-    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
-    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
-    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
-    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
-    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
-    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
-    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
-    other_anno_dir = annotations_dir / "malignant "/ "other"
-    normal_anno_dir = annotations_dir / "normal_inflammation"
+    cervical_df = pd.read_csv(csv_path)
+    cervical_train = cervical_df[cervical_df['train/valid/test']=='train']
 
-
-
-    #slide paths
-    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
-    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
-    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
-    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
-    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
-    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
-    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
-    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
-    normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
-
-    #annotation paths
-    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
-    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
-    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
-    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
-    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
-    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
-    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
-    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
-    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
-
+    annotations = cervical_train['Image Filename'].replace({'isyntax':'txt'}, regex=True)
 
     df = pd.DataFrame()
-    df["slide"] = cin1_slide_paths + hpv_slide_paths + cin2_slide_paths + cin3_slide_paths + cgin_slide_dir_paths + adeno_slide_paths +  squamou_slide_paths + other_slide_paths + Normal_slide_paths
-    
-    df["annotations"] = cin1_anno_paths + hpv_anno_paths + cin2_anno_paths + cin3_anno_paths + cgin_anno_dir_paths + adeno_anno_paths +  squamou_anno_paths + other_anno_paths + normal_anno_paths
-
-    df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
-                  ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
-                  ['normal_inflammation'] * len(normal_slide_paths)
-
-    df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
-                 ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
-
+    df["slide"] =  str(os.path.relpath(root))+ '/' + cervical_train['Image Filename']
+    df["label"] = cervical_train['Category']
+    df["annotation"] = str(os.path.relpath(annotations_dir)) + '/' + annotations
+    df["tags"] = cervical_train['subCategory']
+   
     return Cervical(root, df)
 
 
-
-def testing():
-    """ Generated a data-frame of slide_path, annotation_path, label and tags for test dataset.
+    def testing():
+     """ Generated a data-frame of slide_path, annotation_path, label and tags for test dataset.
 
     Returns:
-        DataFrame (pd.DataFrame): Test data frame
+        DataFrame (pd.DataFrame): Train data frame
     """
-    
-     # set up the paths to the slides and annotations
-    root = project_root() / "data" / "cervical" / "raw" / "testing"
+    # set up the paths to the slides and annotations
+    root = project_root() / "iCAIRD"  
     annotations_dir = root / "annotations"
+    
 
-    #slide directories    
-    cin1_slide_dir = root / "low_grade" / "cin1"
-    hpv_slide_dir = root / "low_grade" / "hpv"
-    cin2_slide_dir = root / "high_grade" / "cin2"
-    cin3_slide_dir = root / "high_grade" / "cin3"
-    cgin_slide_dir = root / "malignant" / "cgin"
-    adenocarcinoma_slide_dir = root / "malignant" / "adenocarcinoma"
-    squamouscarcinoma_slide_dir =  root / "malignant" / "squamous_carcinoma"
-    other_slide_dir = root / "malignant" / "other"
-    Normal_slide_dir = root / "normal_inflammation"
+    csv_path = root / "iCAIRD_Cervical_Data.csv"
 
-    #annotation directories
-    cin1_anno_dir = annotations_dir / "low_grade" / "cin1"
-    hpv_anno_dir = annotations_dir / "low_grade" / "hpv"
-    cin2_anno_dir = annotations_dir / "high_grade" / "cin2"
-    cin3_anno_dir = annotations_dir / "high_grade" / "cin3"
-    cgin_anno_dir = annotations_dir / "malignant" / "cgin"
-    adenocarcinoma_anno_dir = annotations_dir / "malignant" / "adenocarcinoma"
-    squamouscarcinoma_anno_dir =  annotations_dir / "malignant" / "squamous_carcinoma"
-    other_anno_dir = annotations_dir / "malignant "/ "other"
-    normal_anno_dir = annotations_dir / "normal_inflammation"
+    cervical_df = pd.read_csv(csv_path)
+    cervical_test= cervical_df[cervical_df['train/valid/test']=='test']
 
-
-     #slide paths
-    cin1_slide_paths = sorted([p.relative_to(root) for p in cin1_slide_dir.glob("*.isyntax")])
-    hpv_slide_paths = sorted([p.relative_to(root) for p in hpv_slide_dir.glob("*.isyntax")])
-    cin2_slide_paths = sorted([p.relative_to(root) for p in cin2_slide_dir.glob("*.isyntax")])
-    cin3_slide_paths = sorted([p.relative_to(root) for p in cin3_slide_dir.glob("*.isyntax")])
-    cgin_slide_paths = sorted([p.relative_to(root) for p in cgin_slide_dir.glob("*.isyntax")])
-    adeno_slide_paths = sorted([p.relative_to(root) for p in adenocarcinoma_slide_dir.glob("*.isyntax")])
-    squamou_slide_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_slide_dir.glob("*.isyntax")])
-    other_slide_paths = sorted([p.relative_to(root) for p in other_slide_dir.glob("*.isyntax")])
-    normal_slide_paths = sorted([p.relative_to(root) for p in Normal_slide_dir.glob("*.isyntax")])
-
-    #annotation paths
-    cin1_anno_paths = sorted([p.relative_to(root) for p in cin1_anno_dir.glob("*.txt")])
-    hpv_anno_paths = sorted([p.relative_to(root) for p in hpv_anno_dir.glob("*.txt")])
-    cin2_anno_paths = sorted([p.relative_to(root) for p in cin2_anno_dir.glob("*.txt")])
-    cin3_anno_paths = sorted([p.relative_to(root) for p in cin3_anno_dir.glob("*.txt")])
-    cgin_anno_paths = sorted([p.relative_to(root) for p in cgin_anno_dir.glob("*.txt")])
-    adeno_anno_paths = sorted([p.relative_to(root) for p in adenocarcinoma_annodir.glob("*.txt")])
-    squamou_anno_paths = sorted([p.relative_to(root) for p in squamouscarcinoma_anno_dir.glob("*.txt")])
-    other_anno_paths = sorted([p.relative_to(root) for p in other_anno_dir.glob("*.txt")])
-    normal_anno_paths = sorted([p.relative_to(root) for p in normal_anno_dir.glob("*.txt")])
-
+    annotations = cervical_test['Image Filename'].replace({'isyntax':'txt'}, regex=True)
 
     df = pd.DataFrame()
-    df["slide"] = cin1_slide_paths + hpv_slide_paths + cin2_slide_paths + cin3_slide_paths + cgin_slide_dir_paths + adeno_slide_paths +  squamou_slide_paths + other_slide_paths + Normal_slide_paths
-
-    df["annotations"] = cin1_anno_paths + hpv_anno_paths + cin2_anno_paths + cin3_anno_paths + cgin_anno_dir_paths + adeno_anno_paths +  squamou_anno_paths + other_anno_paths + normal_anno_paths
-
-    df["label"] = ['low_grade'] * len(cin1_slide_paths) + ['low_grade'] * len(hpv_slide_paths) + ['high_grade'] * len(cin2_slide_paths) + ['high_grade'] * ['malignant'] * len(cin3_slide_paths) + \
-                  ['malignant'] * len(cgin_slide_dir_paths) + ['malignant'] * len(adeno_slide_paths) + ['malignant'] * len(squamou_slide_paths) + ['malignant'] * len(other_slide_paths) + \
-                  ['normal_inflammation'] * len(normal_slide_paths)
-
-    df["tags"] = ['cin1'] * len(cin1_slide_paths) + ['hpv'] * len(hpv_slide_paths) + ['cin2'] * len(cin2_slide_paths) + ['cin3'] * len(cin3_slide_paths) + ['cgin'] * len(cgin_slide_dir_paths) + \
-                 ['adenocarcinoma'] * len(adeno_slide_paths) + ['squamous_carcinoma'] * len(squamou_slide_paths) + ['other'] * len(other_slide_paths) + ['normal_inflammation'] * len(normal_slide_paths)
-
-
+    df["slide"] =  str(os.path.relpath(root)) + '/' + cervical_test['Image Filename']
+    df["label"] = cervical_test['Category']
+    df["annotation"] = str(os.path.relpath(annotations_dir)) + '/' + annotations
+    df["tags"] = cervical_test['subCategory']
+   
     return Cervical(root, df)
-
-
-
-
