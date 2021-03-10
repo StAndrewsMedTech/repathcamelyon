@@ -203,7 +203,7 @@ class SlidePatchSet(PatchSet):
 
 
     @classmethod
-    def index_slide(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
+    def index_slide(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder, notblank: bool = True):
         """[summary]
 
         Args:
@@ -218,7 +218,6 @@ class SlidePatchSet(PatchSet):
         slide_path, annotation_path, _, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
-            annotations = dataset.load_annotations(annotation_path)
             if patch_finder.labels_level >= len(slide.dimensions):
                 request_level = len(slide.dimensions) - 1
                 lev_diff = patch_finder.labels_level - request_level
@@ -227,45 +226,18 @@ class SlidePatchSet(PatchSet):
                 labels_shape = requested_level_size.as_shape()
             else:
                 labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
-            scale_factor = 2 ** patch_finder.labels_level
-            labels_image = annotations.render(labels_shape, scale_factor)
-            tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
-            labels_image[~tissue_mask] = 0
-            df, level, size = patch_finder(labels_image, slide.dimensions[patch_finder.patch_level])
-            patchset = cls(slide_idx, dataset, size, level, df)
-            return patchset
-
-    @classmethod
-    def index_slide_blank(cls, slide_idx: int, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder):
-        """create an index of blank slides for testing tissue detectors
-
-        Args:
-            slide_idx (int): Index of the slide
-            dataset (Dataset): An object that represents a set of slides and their annotations.
-            tissue_detector (TissueDetector): A method for segmenting tissue from non-tissue in an slide.
-            patch_finder (PatchFinder): 
-
-        Returns:
-            pathset: 
-        """
-        slide_path, annotation_path, _, _ = dataset[slide_idx]
-        with dataset.slide_cls(slide_path) as slide:
-            print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
-            if patch_finder.labels_level >= len(slide.dimensions):
-                request_level = len(slide.dimensions) - 1
-                lev_diff = patch_finder.labels_level - request_level
-                max_level_dim = slide.dimensions[-1]
-                requested_level_size = Size(max_level_dim.width // 2 ** lev_diff, max_level_dim.height // 2 ** lev_diff)
-                labels_shape = requested_level_size.as_shape()
-
+            if notblank:
+                annotations = dataset.load_annotations(annotation_path)
+                scale_factor = 2 ** patch_finder.labels_level
+                labels_image = annotations.render(labels_shape, scale_factor)
             else:
-                labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
-            labels_image = np.ones(labels_shape)
+                labels_image = np.ones(labels_shape)
             tissue_mask = tissue_detector(slide.get_thumbnail(patch_finder.labels_level))
             labels_image[~tissue_mask] = 0
             df, level, size = patch_finder(labels_image, slide.dimensions[patch_finder.patch_level])
             patchset = cls(slide_idx, dataset, size, level, df)
             return patchset
+
 
     @property
     def abs_slide_path(self):
@@ -281,23 +253,13 @@ class SlidesIndex(Sequence):
         self.patches = patches
 
     @classmethod
-    def index_dataset(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'SlidesIndex':
+    def index_dataset(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder, notblank: bool = True) -> 'SlidesIndex':
         """[summary]
 
         Returns:
             [type]: [description]
         """
-        patchsets = [SlidePatchSet.index_slide(idx, dataset, tissue_detector, patch_finder) for idx in range(len(dataset))]
-        return cls(dataset, patchsets)
-
-    @classmethod
-    def index_dataset_blank(cls, dataset: Dataset, tissue_detector: TissueDetector, patch_finder: PatchFinder) -> 'SlidesIndex':
-        """[create blank dataset index for testing tissue detectors]
-
-        Returns:
-            [type]: [description]
-        """
-        patchsets = [SlidePatchSet.index_slide_blank(idx, dataset, tissue_detector, patch_finder) for idx in range(len(dataset))]
+        patchsets = [SlidePatchSet.index_slide(idx, dataset, tissue_detector, patch_finder, notblank) for idx in range(len(dataset))]
         return cls(dataset, patchsets)
 
     def __len__(self):
