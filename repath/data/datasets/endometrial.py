@@ -4,7 +4,7 @@ from pathlib import Path
 from repath.utils.paths import project_root
 
 class Endometrial_subCategories(Endometrial):
-     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
+    def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
     
     @property
@@ -13,7 +13,7 @@ class Endometrial_subCategories(Endometrial):
                 "proliferative": 6, "secretory": 7 , "menstrual": 8, "innactive_atrophic": 9, "hormonal": 10}
 
 class Endometrial_subCategories(Endometrial):
-     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
+    def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
     
     @property
@@ -71,7 +71,7 @@ def training():
     return Endometrial(root, df)
 
 
-    def testing():
+def testing():
      """ Generated a data-frame of slide_path, annotation_path, label and tags for test dataset.
 
     Returns:
