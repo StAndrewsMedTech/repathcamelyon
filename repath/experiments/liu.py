@@ -237,7 +237,7 @@ def inference_on_valid16() -> None:
                      FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
 
     valid_results16 = SlidesIndexResults.predict(valid_patches_8transforms, classifier, transform, 128, output_dir16,
-                                                 results_dir_name, heatmap_dir_name, augmentations)
+                                                 results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
     valid_results16.save()
 
 
@@ -273,8 +273,12 @@ def inference_on_test16() -> None:
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    # create list of augmentations 
+    augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
+                     FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
+
     valid_results16 = SlidesIndexResults.predict(valid, classifier, transform, 128, output_dir16,
-                                                 results_dir_name, heatmap_dir_name)
+                                                 results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
     valid_results16.save()
 
 
@@ -303,3 +307,4 @@ def calculate_patch_level_results_valid_16() -> None:
     set_seed(global_seed)
 
     patch_dataset_function("post_hnm_results", "valid", camelyon16.training(), ci_yn=True)
+

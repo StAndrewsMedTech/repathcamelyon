@@ -36,14 +36,13 @@ global_seed = 123
 
 
 class PatchClassifier(pl.LightningModule):
-    def __init__(self, learnrate) -> None:
+    def __init__(self) -> None:
         super().__init__()
         model = densenet121(pretrained=True)
         model.classifier = nn.Sequential(
             nn.Linear(in_features=1024, out_features=1000, bias=True),
             nn.Linear(1000, 2))
         self.model = model
-        self.learnrate = learnrate
 
     def step(self, batch, batch_idx, label):
         x, y = batch
@@ -69,7 +68,7 @@ class PatchClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(),
-                                    lr=self.learnrate,
+                                    lr=0.1,
                                     momentum=0.9,
                                     weight_decay=0.0001)
         scheduler = {
@@ -172,7 +171,7 @@ def train_patch_classifier() -> None:
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
 
     # train our model
-    classifier = PatchClassifier(learnrate=0.1)
+    classifier = PatchClassifier()
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
                          logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
@@ -272,7 +271,11 @@ def retrain_patch_classifier_hnm() -> None:
 
     # train our model
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    classifier = PatchClassifier(learnrate=0.01).load_from_checkpoint(checkpoint_path=cp_path)
+    classifier = PatchClassifier().load_from_checkpoint(checkpoint_path=cp_path)
+    optimizer = torch.optim.SGD(classifier.parameters(),
+                            lr=0.01,
+                            momentum=0.9,
+                            weight_decay=0.0001)
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
                          logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
@@ -302,11 +305,11 @@ def inference_on_valid() -> None:
     ])
 
     valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
     valid_results16.save()
 
     valid_results17 = SlidesIndexResults.predict(valid17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
     valid_results17.save()
 
 
@@ -352,11 +355,11 @@ def inference_on_test() -> None:
     ])
 
     test_results16 = SlidesIndexResults.predict(test16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
     test_results16.save()
 
     test_results17 = SlidesIndexResults.predict(test17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
     test_results17.save()
 
 
@@ -423,7 +426,7 @@ def calculate_patch_level_results_valid16() -> None:
 
         # calculate patch level results
         title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False, nreps=10)
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=ci, nreps=10)
 
     set_seed(global_seed)
 

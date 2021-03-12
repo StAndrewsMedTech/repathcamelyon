@@ -1,8 +1,16 @@
+import json
+from pathlib import Path
 
+import cv2
+import numpy as np
+import pandas as pd
+from PIL import Image
+
+from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.tissue as tissue
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
-from repath.preprocess.tissue_detection import TissueDetector, TissueDetectorGreyScale, TissueDetectorAll, TissueDetectorOTSU
-from repath.utils.metrics import conf_mat_plot_heatmap
+from repath.preprocess.tissue_detection import TissueDetectorGreyScale, TissueDetectorOTSU, SimpleClosingTransform
+from repath.preprocess.tissue_detection.tissue_metrics import calc_tissue_conf_mat, get_output_images, write_contours_to_file
 from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
 
@@ -15,39 +23,28 @@ experiment_root = project_root() / "experiments" / experiment_name
 global_seed = 123
 
 
-def generic(tissue_detector_test: TissueDetector, label: str, level_in: int) -> None:
-    set_seed(global_seed)
-    tissue_dataset = tissue.tissue()
-    psize = 2 ** level_in
-    patch_finder = GridPatchFinder(labels_level=level_in, patch_level=0, patch_size=psize, stride=psize, remove_background=False)
-    # The tissue detector is applied over the top of the patch finder
-    # tissue detector all classes everything as foreground so will not change the foreground background labels from the annotations
-    tissue_detector_all = TissueDetectorAll()
-    tissue_patchsets_labelled = SlidesIndex.index_dataset(tissue_dataset, tissue_detector_all, patch_finder)
-    tissue_patches_labelled = CombinedIndex.for_slide_indexes([tissue_patchsets_labelled])
-
-    # create blank slides with just tissue detector labels
-    tissue_patchsets_detected = SlidesIndex.index_dataset_blank(tissue_dataset, tissue_detector_test, patch_finder)
-    tissue_patches_detected = CombinedIndex.for_slide_indexes([tissue_patchsets_detected])
-
-    TP = np.sum(np.logical_and(tissue_patches_detected.patches_df.label, tissue_patches_labelled.patches_df.label))
-    FP = np.sum(np.logical_and(tissue_patches_detected.patches_df.label, np.logical_not(tissue_patches_labelled.patches_df.label)))
-    FN = np.sum(np.logical_and(np.logical_not(tissue_patches_detected.patches_df.label), tissue_patches_labelled.patches_df.label))
-    TN = np.sum(np.logical_and(np.logical_not(tissue_patches_detected.patches_df.label), np.logical_not(tissue_patches_labelled.patches_df.label)))
-    accuracy = (TP + TN) / (TP + FP + FN + TN)
-    recall = TP / (TP + FN)
-    precision = TP / (TP + FP) 
-
-    print(f'Accuracy: {round(accuracy, 5)}, Recall: {round(recall, 5)}, Precision: {round(precision, 5)}')
-    print(f'TP: {TP}, FP: {FP}, FN: {FN}, TN: {TN}')
-
-    heatmap_title = "Tissue Detector " + label + " - Accuracy :" + str(round(accuracy, 5))
-    cm_out = conf_mat_plot_heatmap(np.array([TN, FP, FN, TP], dtype=np.int), ['background', 'foreground'], heatmap_title)
-    output_name = label + '_confidence_matrix.png'
-    cm_out.get_figure().savefig(experiment_root / output_name)
-
-
 def greyscale() -> None:
+    set_seed(global_seed)
     tissue_detector_test = TissueDetectorGreyScale()
-    generic(tissue_detector_test, "Greyscale", 8)
+    calc_tissue_conf_mat(tissue_detector_test, "greyscale", 7, experiment_root)
+    get_output_images(tissue_detector_test, "greyscale", 7, experiment_root)
+    write_contours_to_file(tissue_detector_test, "greyscale", 7, experiment_root, level_out=0)  
+
+
+def otsu() -> None:
+    set_seed(global_seed)
+    tissue_detector_test = TissueDetectorOTSU()
+    calc_tissue_conf_mat(tissue_detector_test, "otsu", 7, experiment_root)
+    get_output_images(tissue_detector_test, "otsu", 7, experiment_root)
+    write_contours_to_file(tissue_detector_test, "otsu", 7, experiment_root, level_out=0)
+
+
+def greyscale_closing() -> None:
+    set_seed(global_seed)
+    morphology_transform = SimpleClosingTransform()
+    tissue_detector_test = TissueDetectorGreyScale(morphology_transform)
+    calc_tissue_conf_mat(tissue_detector_test, "greyscale_with_closing", 7, experiment_root)
+    get_output_images(tissue_detector_test, "greyscale_with_closing", 7, experiment_root)
+    write_contours_to_file(tissue_detector_test, "greyscale_with_closing", 7, experiment_root, level_out=0)
+
 

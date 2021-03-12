@@ -186,9 +186,9 @@ def inference_on_train() -> None:
     mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
     train_data_cut_down.paths = train_data_cut_down.paths[mask]
 
-    # patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
-    # train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
-    # train_patches_grid.save(experiment_root / "train_index_grid")
+    #patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    #train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
+    #train_patches_grid.save(experiment_root / "train_index_grid")
 
     train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
@@ -200,7 +200,7 @@ def inference_on_train() -> None:
     ])
 
     train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
-                                                 results_dir_name, heatmap_dir_name)
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
     train_results16.save()
 
 
@@ -271,7 +271,8 @@ def retrain_patch_classifier_hnm() -> None:
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
 
     # train our model
-    classifier = PatchClassifier()
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)

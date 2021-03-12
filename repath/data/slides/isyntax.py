@@ -84,7 +84,6 @@ class Slide(SlideBase):
                 y + origin.y + h,
                 level,
             ]
-            print(range)
             return range
 
         def get_region_size(reg):
@@ -97,7 +96,7 @@ class Slide(SlideBase):
             return w, h
 
         def process_image(pix, reg_idx, w, h):
-            print(f"Processing region {reg_idx}")
+            # print(f"Processing region {reg_idx}")
             try:
                 image = Image.frombuffer(
                     "RGB", (int(w), int(h)), pix, "raw", "RGB", 0, 1
