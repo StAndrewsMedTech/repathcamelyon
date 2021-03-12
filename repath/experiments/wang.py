@@ -276,3 +276,134 @@ def retrain_patch_classifier_hnm() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
+def inference_on_valid_pre() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "pre_hnm_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original training data indexes are overlapping we need non overlapping grid for inference
+    valid_ol_slides = [pat.slide_path for pat in valid_overlapping.patches]
+    valid_data_cut_down = camelyon16.training()
+    mask = [sl in valid_ol_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    valid_patches_grid = SlidesIndex.index_dataset(valid_data_cut_down, tissue_detector, patch_finder)
+    valid_patches_grid.save(experiment_root / "valid_index_grid")
+
+    valid_patches_grid = SlidesIndex.load(valid_data_cut_down, experiment_root / "valid_index_grid")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    valid_results16.save()
+
+
+def inference_on_valid_post() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original training data indexes are overlapping we need non overlapping grid for inference
+    valid_ol_slides = [pat.slide_path for pat in valid_overlapping.patches]
+    valid_data_cut_down = camelyon16.training()
+    mask = [sl in valid_ol_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    valid_patches_grid = SlidesIndex.load(valid_data_cut_down, experiment_root / "valid_index_grid")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    valid_results16.save()
+
+
+def preprocess_test_index() -> None:
+    set_seed(global_seed)
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+
+    # initalise datasets
+    test_data16 = camelyon16.testing()
+
+    # find all patches in datasets
+    test_patches16 = SlidesIndex.index_dataset(test_data16, tissue_detector, patch_finder)
+
+    # save
+    test_patches16.save(experiment_root / "test_index16")
+
+
+def inference_on_test_pre() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "pre_hnm_results" / "test16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    test_patches = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index16")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    test_results16.save()
+
+
+def inference_on_test_post() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "test16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    test_patches = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index16")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    test_results16.save()
+

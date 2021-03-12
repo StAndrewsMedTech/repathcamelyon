@@ -138,6 +138,7 @@ def write_contours_to_file(tissue_detector: TissueDetector, label: str,  level_i
     output_dir = base_dir / label / 'json_files'
     output_dir.mkdir(parents=True, exist_ok=True)
     for path in datset.paths.slide:
+        print(path)
         test_path = project_root() / datset.root / path
         with datset.slide_cls(test_path) as slide:
             thumb = slide.get_thumbnail(level_in)
