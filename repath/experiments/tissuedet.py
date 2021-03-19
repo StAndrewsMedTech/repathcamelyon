@@ -63,7 +63,7 @@ def greyscale_complex() -> None:
     morphology_transform1 = SizedClosingTransform(level_in=level)
     morphology_transform2 = FillHolesTransform(level_in=level)
     morphology_transforms = [morphology_transform1, morphology_transform2]
-    tissue_detector_test = TissueDetectorGreyScale(grey_level=0.8, morph_transform = morphology_transforms)
+    tissue_detector_test = TissueDetectorGreyScale(grey_level=0.85, morph_transform = morphology_transforms)
     calc_tissue_conf_mat(tissue_detector_test, "greyscale_fill_holes", level, experiment_root)
     get_output_images(tissue_detector_test, "greyscale_fill_holes", level, experiment_root)
     write_contours_to_file(tissue_detector_test, "greyscale_fill_holes", level, experiment_root, level_out=0)

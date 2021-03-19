@@ -129,7 +129,7 @@ class SlidesIndexResults(SlidesIndex):
         self.results_dir_name = results_dir_name
         self.heatmap_dir_name = heatmap_dir_name
 
-    def save(self):
+    def save(self, writeps=False):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
         for ps in self.patches:
@@ -137,6 +137,8 @@ class SlidesIndexResults(SlidesIndex):
             csv_path = self.output_dir / self.results_dir_name / ps.slide_path.with_suffix('.csv')
             png_path = self.output_dir / self.heatmap_dir_name / ps.slide_path.with_suffix('.png')
 
+            if writeps:
+                ps.save_csv(self.output_dir / self.results_dir_name)
             # append information about slide to index
             info = np.array([ps.slide_idx, csv_path, png_path, ps.level, ps.patch_size])
             info = np.reshape(info, (1, 5))
@@ -151,12 +153,16 @@ class SlidesIndexResults(SlidesIndex):
     @classmethod
     def load(cls, dataset, input_dir, results_dir_name, heatmap_dir_name, border=0, jitter=0):
         def patchset_from_row(r: namedtuple) -> SlidePatchSet:
+            print(r.csv_path)
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSetResults(int(r.slide_idx), dataset, int(r.patch_size),
                                  int(r.level), patches_df, border, jitter)
 
         index = pd.read_csv(input_dir / 'results_index.csv')
+        print("load rows", index.shape[0])
         patches = [patchset_from_row(r) for r in index.itertuples()]
+        print(len(patches))
+        print(patches[0].slide_path)
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
 
@@ -186,15 +192,18 @@ class SlidesIndexResults(SlidesIndex):
         
         not_processed = SlidesIndex(slide_index.dataset, not_processed)
         
+        # create empty lists 
         if nthreads == None:
             nthreads = torch.cuda.device_count()
-
         gpu_lists = [ [] for _ in range(nthreads) ]
+
+        # split slides to list
         while len(not_processed) > 0:
             for n in range(nthreads):
                 if len(not_processed) > 0:
                     gpu_lists[n].append(not_processed.patches.pop())
         not_processed.patches = gpu_lists 
+
         # spawn a process to predict for each slide
         slides = zip(not_processed, range(nthreads), [transform]*nthreads, [model]*nthreads, [batch_size]*nthreads, 
             [border] *nthreads, [jitter] * nthreads, [output_dir] *nthreads, [results_dir_name]*nthreads, 

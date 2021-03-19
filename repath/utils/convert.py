@@ -67,3 +67,17 @@ def remove_item_from_dict(dict_in: dict, key_to_remove: str) -> dict:
     dict_out = dict(dict_in)
     del dict_out[key_to_remove]
     return dict_out
+
+
+def average_patches(slides_index, naugs: int, new_dir):
+    """ averages results from patch sets with multiple augments per patch
+    """
+    for ps in slides_index:
+        df = ps.patches_df
+        ps.patches_df = df.groupby(['x', 'y'], as_index=False).mean()
+
+    slides_index.output_dir = new_dir
+    
+    return slides_index
+
+    

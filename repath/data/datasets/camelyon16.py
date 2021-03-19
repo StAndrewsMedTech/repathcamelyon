@@ -1,18 +1,38 @@
 
+import os
+from pathlib import Path
+from typing import Dict, Tuple
+
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
+import numpy as np
+import pandas as pd
+from repath.data.annotations import AnnotationSet
+from repath.data.annotations.asapxml import load_annotations
+from repath.data.datasets import Dataset
+from repath.data.slides.openslide import Slide
+from repath.data.slides import SlideBase
+from repath.utils.paths import project_root
+from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve
+
+
+
+class Camelyon16(Dataset):
+    def __init__(self, root: Path, paths: pd.DataFrame) -> None:
+        super().__init__(root, paths)
 
     def load_annotations(self, file: Path) -> AnnotationSet:
-        """ Load annotations form a given annotation file path.
+            """ Load annotations form a given annotation file path.
 
-        Args:
-            file (Path): Path to the annotation file.  
-        
-        Returns:
-            AnnotationSet which includes: annotations, labels, labels_order and fill_label
-        """
-        group_labels = {"Tumor": "tumor", "_0": "tumor", "_1": 'tumor', "_2": 'normal', 'Exclusion': 'normal', 'None': 'normal'}
-        annotations = load_annotations(file, group_labels) if file else []
-        labels_order = ["background", "tumor", "normal"]
-        return AnnotationSet(annotations, self.labels, labels_order, "normal")
+            Args:
+                file (Path): Path to the annotation file.  
+            
+            Returns:
+                AnnotationSet which includes: annotations, labels, labels_order and fill_label
+            """
+            group_labels = {"Tumor": "tumor", "_0": "tumor", "_1": 'tumor', "_2": 'normal', 'Exclusion': 'normal', 'None': 'normal'}
+            annotations = load_annotations(file, group_labels) if file else []
+            labels_order = ["background", "tumor", "normal"]
+            return AnnotationSet(annotations, self.labels, labels_order, "normal")
 
     @property
     def slide_cls(self) -> SlideBase:

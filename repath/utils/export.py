@@ -6,6 +6,7 @@ import pandas as pd
 from PIL import Image
 
 from repath.utils.convert import to_frame_with_locations
+from repath.utils.paths import project_root
 
 
 def convert_mask_to_contours_json_no_grandkids(im_resize, label):
@@ -131,13 +132,13 @@ def patches_for_game(tissue_detector_test: 'TissueDetector', label: str, level_i
     tissue_patchsets_detected = SlidesIndex.index_dataset(tissue_dataset, tissue_detector_test, patch_finder, notblank=False)
 
     # find patches close to edges
-    tissue_patchsets_edges = find_patches_close_to_edge(tissue_dataset, tissue_patchsets_detected, tissue_detector_test)
+    tissue_patchsets_edges = find_patches_close_to_edge(tissue_dataset, tissue_patchsets_detected, tissue_detector_test, level_in)
 
     # combine into one
     tissue_patches_edges = CombinedIndex.for_slide_indexes([tissue_patchsets_edges])
 
     # filter to get only edge patches
-    tissue_patches_edges.patches_df = tissue_patches_edges.patches_df[tissue_patches_edges.patches_df.edge_patch == True]
+    tissue_patches_edges.patches_df = tissue_patches_edges.patches_df[tissue_patches_edges.patches_df.game_patch == True]
 
     # get sample of tissue_patches
     tissue_patches_sample = tissue_patches_edges.patches_df[tissue_patches_edges.patches_df.label == 1]
@@ -155,7 +156,7 @@ def patches_for_game(tissue_detector_test: 'TissueDetector', label: str, level_i
     tissue_patches_edges.save_patches(output_dir=Path(project_root(),"experiments","tissue","patches_for_game"))
 
 
-def find_patches_close_to_edge(datset, slides_index, tissue_detector):
+def find_patches_close_to_edge(datset, slides_index, tissue_detector, level_in, how_close: int = 6):
 
     for sps in slides_index:
         path = datset.paths.slide[sps.slide_idx]
@@ -166,11 +167,11 @@ def find_patches_close_to_edge(datset, slides_index, tissue_detector):
         # find patches close to the contours of the image
         blank_im = np.zeros(tissue_mask_detected.shape, dtype=np.uint8)
         contours, hierarchy = cv2.findContours(np.array(tissue_mask_detected, dtype=np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        contour_im = cv2.drawContours(blank_im, contours, -1, [255,255,255], 20)
+        contour_im = cv2.drawContours(blank_im, contours, -1, [255,255,255], how_close)
         contour_im = contour_im > 0
-        df = to_frame_with_locations(contour_im, "edge_patch")
+        df = to_frame_with_locations(contour_im, "game_patch")
         col_nams = sps.patches_df.columns.tolist()
-        col_nams.append("edge_patch")
+        col_nams.append("game_patch")
         patches_df = pd.concat((sps.patches_df, df.iloc[:, 2:3]), axis=1, ignore_index=True)
         patches_df.columns = col_nams
         sps.patches_df = patches_df

@@ -121,10 +121,6 @@ def preprocess_samples() -> None:
     train17 = SlidesIndex.load(train_data17, experiment_root / "train_index17")
     valid17 = SlidesIndex.load(train_data17, experiment_root / "valid_index17")
 
-    # remove non-annotated slides from camelyon17
-    train17 = select_annotated(train17)
-    valid17 = select_annotated(valid17)
-
     # sample from train and valid sets
     train_samples = balanced_sample([train16, train17], 47574)
     valid_samples = balanced_sample([valid16, valid17], 29000)
@@ -364,7 +360,7 @@ def inference_on_test() -> None:
 
 
 def calculate_patch_level_results() -> None:
-    def patch_dataset_function(modelname: str, splitname: str, dataset16: SlideDataset, dataset17: Dataset, ci: bool = False):
+    def patch_dataset_function(modelname: str, splitname: str, dataset16: Dataset, dataset17: Dataset, ci: bool = False):
         # define strings for model and split
         model_dir_name = modelname + '_results'
         splitname16 = splitname + '16'
@@ -383,51 +379,28 @@ def calculate_patch_level_results() -> None:
         splitdirout1617 = model_dir / results_out_name / splitname1617
 
         # read in predictions
-        split_results_16 = SlidesIndexResults.load_results_index(dataset16, splitdirin16,
-                                                                 results_in_name, heatmap_in_name)
-        split_results_17 = SlidesIndexResults.load_results_index(dataset17, splitdirin17,
-                                                                 results_in_name, heatmap_in_name)
-        split_results_17_annotated = split_results_17.select_annotated()
-
-        # calculate patch level results
-        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False)
-        title17 = experiment_name + ' experiment ' + modelname + ' model Camelyon 17 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_17], splitdirout17, title17, ci=False)
-        title1617 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 & 17 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_1617], splitdirout1617, title1617, ci=False)
-
-    set_seed(global_seed)
-
-    patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
-    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
-    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
-    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
-
-
-### Temp for debugging
-def calculate_patch_level_results_valid16() -> None:
-    def patch_dataset_function(modelname: str, splitname: str, dataset16: Dataset, ci: bool = False):
-        # define strings for model and split
-        model_dir_name = modelname + '_results'
-        splitname16 = splitname + '16'
-        results_out_name = "patch_summaries"
-        results_in_name = "results"
-        heatmap_in_name = "heatmaps"
-
-        # set paths for model and split
-        model_dir = experiment_root / model_dir_name
-        splitdirin16 = model_dir / splitname16
-        splitdirout16 = model_dir / results_out_name / splitname16
-
-        # read in predictions
         split_results_16 = SlidesIndexResults.load(dataset16, splitdirin16,
                                                                  results_in_name, heatmap_in_name)
 
+        split_results_17 = SlidesIndexResults.load(dataset17, splitdirin17,
+                                                                 results_in_name, heatmap_in_name)
+        split_results_17_annotated_list = [ps for ps in split_results_17 if 'annotated' in ps.tags]
+        split_results_17_annotated = split_results_17
+        split_results_17_annotated.patches = split_results_17_annotated_list
+
         # calculate patch level results
         title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_16], splitdirout16, title16, ci=ci, nreps=10)
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=True)
+        if len(split_results_17_annotated) > 0:
+            title17 = experiment_name + ' experiment ' + modelname + ' model Camelyon 17 ' + splitname + ' dataset'
+            patch_level_metrics([split_results_17_annotated], splitdirout17, title17, ci=True)
+            title1617 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 & 17 ' + splitname + ' dataset'
+            patch_level_metrics([split_results_16, split_results_17_annotated], splitdirout1617, title1617, ci=True)
 
     set_seed(global_seed)
 
-    patch_dataset_function("post_hnm", "valid", camelyon16.training(), ci=True)
+    #patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    #patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+

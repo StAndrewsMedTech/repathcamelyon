@@ -13,16 +13,19 @@ from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize
 from torchvision.models import inception_v3
 
-from repath.utils.paths import project_root
+
 from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
-from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random
+from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random, get_subset_of_dataset
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.results import SlidesIndexResults
+from repath.utils.convert import average_patches
+from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
+
 
 """
 Global stuff
@@ -245,7 +248,8 @@ def preprocess_testindex() -> None:
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     test_data = camelyon16.testing()
-    apply_transforms = LiuTransform(label=2, num_transforms=8)
+    # apply transforms for all 
+    apply_transforms = MultiTransform(num_transforms=8)
     patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=128, stride=128, 
                                    border=patch_border, jitter=patch_jitter, 
                                    apply_transforms=apply_transforms)
@@ -260,12 +264,12 @@ def inference_on_test16() -> None:
     cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "post_hnm_results" / "test16"
+    output_dir16 = experiment_root / "inference_results" / "test16"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "test_index")
+    test = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index")
 
     transform = Compose([
         RandomCrop((299, 299)),
@@ -277,34 +281,55 @@ def inference_on_test16() -> None:
     augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
                      FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
 
-    valid_results16 = SlidesIndexResults.predict(valid, classifier, transform, 128, output_dir16,
+    test_results16 = SlidesIndexResults.predict(test, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
-    valid_results16.save()
+    test_results16.save()
 
 
-def calculate_patch_level_results_valid_16() -> None:
-    def patch_dataset_function(modelname: str, splitname: str, dataset: Dataset, ci_yn: bool):
-        # define strings for model and split
-        splitname16 = splitname + '16'
-        results_out_name = "patch_summaries"
-        results_in_name = "results"
-        heatmap_in_name = "heatmaps"
+def average_augments() -> None:
+    """
+    Output from inference contains the values for all 8 augments of each patch
+    Need to average them to get the final results for postprocessing
+    """
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+    dirin = experiment_root / "inference_results" / 'valid16' 
+    dirout = experiment_root / "inference_results" / 'valid16mean' 
 
-        # set paths for model and split
-        model_dir = experiment_root / modelname
-        splitdirin = model_dir / splitname16
-        splitdirout = model_dir / splitname16 / results_out_name
+    # need a cutdown validation dataset for this experiment
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
+    valid16 = SlidesIndexResults.load(cam16_valid, dirin, results_in_name, heatmap_in_name)
+    for ps in valid16:
+        print(ps.slide_path)
+    mean_valid16 = average_patches(valid16, 8, dirout)
+    mean_valid16.save(writeps=True)
 
-        # read in predictions
-        split_results = SlidesIndexResults.load(dataset, splitdirin, results_in_name, heatmap_in_name)
-        print(splitdirin)
-        print(len(split_results))
 
-        # calculate patch level results
-        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results], splitdirout, title16, ci=ci_yn)
+
+def calculate_patch_level_results_valid_16() -> None:     
 
     set_seed(global_seed)
 
-    patch_dataset_function("post_hnm_results", "valid", camelyon16.training(), ci_yn=True)
+    # need a cutdown validation dataset for this experiment
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
+
+    # define strings for model and split
+    results_out_name = "patch_summaries"
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+
+    # set paths for model and split
+    model_dir = experiment_root / "inference_results"
+    dirin = model_dir / 'valid16mean'
+    dirout = dirin / results_out_name
+
+    # read in predictions
+    split_results = SlidesIndexResults.load(cam16_valid, dirin, results_in_name, heatmap_in_name)
+
+    # calculate patch level results
+    title16 = experiment_name + ' experiment Camelyon 16 valid dataset'
+    patch_level_metrics([split_results], dirout, title16, ci=False)
+
 

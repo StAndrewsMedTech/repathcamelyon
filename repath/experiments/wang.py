@@ -13,12 +13,14 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
+from repath.data.datasets.dataset import Dataset
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
-from repath.preprocess.sampling import split_camelyon16, balanced_sample
+from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
 from torchvision.models import GoogLeNet
 from repath.utils.seeds import set_seed
+from repath.postprocess.patch_level_results import patch_level_metrics
 
 """
 Global stuff
@@ -109,11 +111,18 @@ def preprocess_samples() -> None:
     # load in the train and valid indexes
     train_data = camelyon16.training()
     train = SlidesIndex.load(train_data, experiment_root / "train_index")
+    print("read train index")
     valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
+    print("read valid index")
 
     # sample from train and valid sets
     train_samples = balanced_sample([train], 2000000)
+    print("balanced train sample")
     valid_samples = balanced_sample([valid], 500000)
+    print("balanced valid sample")
+
+    train_samples.save(experiment_root / "train_samples")
+    valid_samples.save(experiment_root / "valid_samples")
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
@@ -153,7 +162,7 @@ def train_patch_classifier() -> None:
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
         min_delta=0.00,
-        patience=5,
+        patience=3,
         verbose=False,
         mode='max'
     )
@@ -163,7 +172,7 @@ def train_patch_classifier() -> None:
 
     # train our model
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=5, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
@@ -195,8 +204,8 @@ def inference_on_train() -> None:
 
     transform = Compose([
         RandomCrop((224, 224)),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ToTensor()#,
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
@@ -406,4 +415,37 @@ def inference_on_test_post() -> None:
     test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name, nthreads=2)
     test_results16.save()
+
+
+def calculate_patch_level_results() -> None:
+    def patch_dataset_function(modelname: str, splitname: str, dataset16: Dataset, ci: bool = False):
+        # define strings for model and split
+        model_dir_name = modelname + '_results'
+        splitname16 = splitname + '16'
+        results_out_name = "patch_summaries"
+        results_in_name = "results"
+        heatmap_in_name = "heatmaps"
+
+        # set paths for model and split
+        model_dir = experiment_root / model_dir_name
+        splitdirin16 = model_dir / splitname16
+        splitdirout16 = model_dir / results_out_name / splitname16
+
+        # read in predictions
+        split_results_16 = SlidesIndexResults.load(dataset16, splitdirin16,
+                                                                 results_in_name, heatmap_in_name)
+
+        # calculate patch level results
+        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False)
+
+    set_seed(global_seed)
+
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
+
+    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=False)
+    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=False)
 

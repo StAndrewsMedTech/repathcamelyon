@@ -10,6 +10,21 @@ from repath.preprocess.patching import SlidesIndex
 """
 Global stuff
 """
+
+def get_subset_of_dataset(slides_index_to_match, whole_dataset):
+    
+    # get valid slides in valid slide index (the list of split between valid and train)
+    slides_to_match = [pat.slide_path for pat in slides_index_to_match.patches]
+    # create new dataset initially with both training and valid
+    dataset_subset = whole_dataset
+    # chop new dataset down to be just slide in valid set
+    mask = [sl in slides_to_match for sl in dataset_subset.paths.slide]
+    dataset_subset.paths = dataset_subset.paths[mask]
+
+    return dataset_subset
+
+
+
 def split_endometrial(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIndex, SlidesIndex]:
     print("Splitting Endometrial")
 
