@@ -17,7 +17,7 @@ HAS_CONDA=True
 endif
 
 # network
-JUPYTER_PORT := 8800
+JUPYTER_PORT := 8880
 
 #################################################################################
 # PYTHON ENVIRONMENT COMMANDS                                                   #
@@ -93,6 +93,7 @@ docker_run:
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
 				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
 				-v /raid/experiments/$(PROJECT_NAME):/home/ubuntu/$(PROJECT_NAME)/experiments \
+				-v /mnt/isilon1:/home/ubuntu/$(PROJECT_NAME)/data/isilon1 \
 				-it $(PROJECT_NAME):latest
 
 docker_run_local:
