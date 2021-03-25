@@ -103,6 +103,7 @@ class CombinedPatchSet(PatchSet):
                     slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
                     patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
                     image_path = output_dir / label / patch_filename
+                    image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
                     cv2.imwrite(str(image_path), np.array(image))
                     # image.save(image_path)
 

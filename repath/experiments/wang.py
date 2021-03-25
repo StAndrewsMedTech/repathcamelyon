@@ -437,15 +437,15 @@ def calculate_patch_level_results() -> None:
 
         # calculate patch level results
         title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_16], splitdirout16, title16, ci=False)
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=ci)
 
     set_seed(global_seed)
 
     valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
     cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
 
-    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=False)
-    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=False)
-    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=False)
-    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=False)
+    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=True)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=True)
+    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=True)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=True)
 

@@ -125,6 +125,9 @@ def preprocess_samples() -> None:
     train_samples = balanced_sample([train], 5000000, sampling_policy=weighted_random)
     valid_samples = balanced_sample([valid], 1250000, sampling_policy=weighted_random)
 
+    train_samples.save(experiment_root / "train_samples")
+    valid_samples.save(experiment_root / "valid_samples")
+
     # create list of augmentations 
     augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
                      FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
@@ -174,6 +177,52 @@ def train_patch_classifier() -> None:
 
     # train our model
     classifier = PatchClassifier()
+    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, log_every_n_steps=1)
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
+def restart_patch_classifier() -> None:
+    set_seed(global_seed)
+    # transforms
+    transform = Compose([
+        RandomCrop((299, 299)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # prepare our data
+    batch_size = 32
+    train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    
+    # create dataloaders
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_accuracy",
+        dirpath=experiment_root / "patch_model",
+        filename=f"checkpoint_restart",
+        save_top_k=1,
+        mode="max",
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=5,
+        verbose=False,
+        mode='max'
+    )
+
+    # create a logger
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=1)
+
+    # train our model
+    cp_path = experiment_root / "patch_model"/ "checkpoint.ckpt.ckpt"
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
