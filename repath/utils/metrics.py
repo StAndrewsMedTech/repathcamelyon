@@ -5,9 +5,9 @@ import numpy as np
 def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=None):
     title_lab = f'{title}\n score = {round(summary_value, 4)}'
     fig = plt.figure(figsize=(8,6))
-    plt.xlabel(xlabel, fontsize=12)
-    plt.ylabel(ylabel, fontsize=12)
-    fig.suptitle(title_lab, fontsize=10, y=1.05)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
+    fig.suptitle(title_lab, fontsize=14, x=1.005)
     plt.plot(xvalues, yvalues, '-', color='#000000')
     xleft, xright = plt.xlim()
     if x_axis_lim is not None:

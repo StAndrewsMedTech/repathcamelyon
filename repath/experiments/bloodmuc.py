@@ -26,7 +26,6 @@ global_seed = 123
 
 ### temp for debugging
 # split between train and predict
-nnn = 30
 
 
 def train_classifier() -> None:
@@ -36,12 +35,8 @@ def train_classifier() -> None:
     level_label = 6
 
     # read in slides and annotations for training
-    dset = bloodm.blood_mucus()
+    dset = bloodm.training()
     thumbz, annotz = get_slides_annots(dset, level_label)
-
-    ## temp for debugging
-    thumbz = thumbz[0:nnn]
-    annotz = annotz[0:nnn]
 
     # apply tissue detection
     morphology_transform1 = SizedClosingTransform(level_in=level_label)
@@ -69,15 +64,10 @@ def predict_images() -> None:
     thumb_level = 7
 
     # read in slides and annotations for training
-    dset = bloodm.blood_mucus()
+    dset = bloodm.validation()
     thumbz, annotz = get_slides_annots(dset, level_label)
     thumbz_out, annotz_out = get_slides_annots(dset, thumb_level)
 
-    ## temp for debugging
-    thumbz = thumbz[nnn:]
-    annotz = annotz[nnn:]
-    thumbz_out = thumbz_out[nnn:]
-    annotz_out = annotz_out[nnn:]
 
     # apply tissue detection
     morphology_transform1 = SizedClosingTransform(level_in=level_label)

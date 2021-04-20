@@ -153,7 +153,6 @@ class SlidesIndexResults(SlidesIndex):
     @classmethod
     def load(cls, dataset, input_dir, results_dir_name, heatmap_dir_name, border=0, jitter=0):
         def patchset_from_row(r: namedtuple) -> SlidePatchSet:
-            print(r.csv_path)
             patches_df = pd.read_csv(input_dir / r.csv_path)
             return SlidePatchSetResults(int(r.slide_idx), dataset, int(r.patch_size),
                                  int(r.level), patches_df, border, jitter)
@@ -161,8 +160,6 @@ class SlidesIndexResults(SlidesIndex):
         index = pd.read_csv(input_dir / 'results_index.csv')
         print("load rows", index.shape[0])
         patches = [patchset_from_row(r) for r in index.itertuples()]
-        print(len(patches))
-        print(patches[0].slide_path)
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
 

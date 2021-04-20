@@ -17,7 +17,7 @@ class BloodMucus(Dataset):
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path) -> AnnotationSet:
-        group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background"}
+        group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background", "Ignore*": "background"}
         labels = {"background": 0, "tissue": 1, "blood": 2, "mucus": 3, "blood_mucus": 4}
         default_label = "tissue"
         annotations = load_annotations(file, group_labels, default_label) if file else []
@@ -34,7 +34,7 @@ class BloodMucus(Dataset):
         return {"background": 0, "tissue": 1, "blood": 2, "mucus": 3, "blood_mucus": 4}
 
 
-def blood_mucus():
+def training():
     """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
 
     Returns:
@@ -44,6 +44,33 @@ def blood_mucus():
     root_dir = project_root() / "data" / "icaird_blood"
     image_dir = root_dir   / "images"
     annot_dir = root_dir / "annotations"
+    
+    slide_paths = [p.relative_to(root_dir) for p in image_dir.glob("*.isyntax")]
+    annot_paths = [p.relative_to(root_dir) for p in annot_dir.glob("*.txt")]
+
+    slide_paths = sorted(slide_paths)
+    annot_paths = sorted(annot_paths)
+   
+    # turn them into a data frame and pad with empty annotation paths
+    df = pd.DataFrame()
+    df["slide"] = slide_paths
+    df["annotation"] = annot_paths
+    df["label"] = ""
+    df["tags"] = ""
+
+    return BloodMucus(root_dir, df)
+
+
+def validation():
+    """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
+
+    Returns:
+        DataFrame (pd.DataFrame): Train data frame
+    """
+    # first set up the paths to the slides without tissue annotations
+    root_dir = project_root() / "data" / "icaird_blood"
+    image_dir = root_dir   / "images_valid"
+    annot_dir = root_dir / "annotations_valid"
     
     slide_paths = [p.relative_to(root_dir) for p in image_dir.glob("*.isyntax")]
     annot_paths = [p.relative_to(root_dir) for p in annot_dir.glob("*.txt")]

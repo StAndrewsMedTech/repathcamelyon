@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
-from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize
+from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize, ColorJitter
 from torchvision.models import inception_v3
 
 
@@ -22,6 +22,7 @@ from repath.preprocess.sampling import split_camelyon16, balanced_sample, weight
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.results import SlidesIndexResults
+from repath.postprocess.slide_level_metrics import SlideClassifierLiu
 from repath.utils.convert import average_patches
 from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
@@ -142,6 +143,7 @@ def train_patch_classifier() -> None:
     # transforms
     transform = Compose([
         RandomCrop((299, 299)),
+        ColorJitter(brightness=0.25, contrast=0.75, saturation=0.25, hue=0.04),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -187,6 +189,7 @@ def restart_patch_classifier() -> None:
     # transforms
     transform = Compose([
         RandomCrop((299, 299)),
+        ColorJitter(brightness=0.25, contrast=0.75, saturation=0.25, hue=0.04),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -255,7 +258,7 @@ def preprocess_valid_inference():
 def inference_on_valid16() -> None:
     set_seed(global_seed)
     # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
     output_dir16 = experiment_root / "inference_results" / "valid16"
@@ -310,7 +313,7 @@ def preprocess_testindex() -> None:
 def inference_on_test16() -> None:
     set_seed(global_seed)
     # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
     output_dir16 = experiment_root / "inference_results" / "test16"
@@ -335,7 +338,7 @@ def inference_on_test16() -> None:
     test_results16.save()
 
 
-def average_augments() -> None:
+def average_augments_valid() -> None:
     """
     Output from inference contains the values for all 8 augments of each patch
     Need to average them to get the final results for postprocessing
@@ -354,6 +357,23 @@ def average_augments() -> None:
     mean_valid16 = average_patches(valid16, 8, dirout)
     mean_valid16.save(writeps=True)
 
+
+def average_augments_test() -> None:
+    """
+    Output from inference contains the values for all 8 augments of each patch
+    Need to average them to get the final results for postprocessing
+    """
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+    dirin = experiment_root / "inference_results" / 'test16' 
+    dirout = experiment_root / "inference_results" / 'test16mean' 
+
+    # need a cutdown validation dataset for this experiment
+    test16 = SlidesIndexResults.load(camelyon16.testing(), dirin, results_in_name, heatmap_in_name)
+    for ps in test16:
+        print(ps.slide_path)
+    mean_test16 = average_patches(test16, 8, dirout)
+    mean_test16.save(writeps=True)
 
 
 def calculate_patch_level_results_valid_16() -> None:     
@@ -382,3 +402,53 @@ def calculate_patch_level_results_valid_16() -> None:
     patch_level_metrics([split_results], dirout, title16, ci=False)
 
 
+def calculate_patch_level_results_test_16() -> None:     
+
+    set_seed(global_seed)
+
+    # define strings for model and split
+    results_out_name = "patch_summaries"
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+
+    # set paths for model and split
+    model_dir = experiment_root / "inference_results"
+    dirin = model_dir / 'test16mean'
+    dirout = dirin / results_out_name
+
+    # read in predictions
+    split_results = SlidesIndexResults.load(camelyon16.testing(), dirin, results_in_name, heatmap_in_name)
+
+    # calculate patch level results
+    title16 = experiment_name + ' experiment Camelyon 16 test dataset'
+    patch_level_metrics([split_results], dirout, title16, ci=False)
+
+
+def calculate_slide_level_results() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    validresultsin_post = experiment_root / "inference_results" / "valid16mean" 
+    testresultsin_post = experiment_root / "inference_results" / "test16mean" 
+
+    validresults_out_post = experiment_root / "inference_results" / "slide_results16_valid"
+    testresults_out_post = experiment_root / "inference_results" / "slide_results16_test"
+
+    title_postv = experiment_name + " experiment, Camelyon 16 valid dataset"
+    title_postt = experiment_name + " experiment, Camelyon 16 test dataset"
+
+    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    #valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), testresultsin_post, results_dir_name, heatmap_dir_name)
+
+    slide_classifier = SlideClassifierLiu(camelyon16.training().slide_labels)
+    #slide_classifier.calc_features(valid_results_post, validresults_out_post)
+    slide_classifier.calc_features(test_results_post, testresults_out_post)
+    #slide_classifier.predict_slide_level(features_dir=validresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_post)
+    #slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
+    slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)

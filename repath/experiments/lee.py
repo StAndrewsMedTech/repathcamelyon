@@ -18,9 +18,11 @@ import repath.data.datasets.camelyon16 as camelyon16
 import repath.data.datasets.camelyon17 as camelyon17
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
-from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample
+from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
 from repath.postprocess.patch_level_results import patch_level_metrics
+from repath.postprocess.slide_level_metrics import SlideClassifierLee
+from repath.postprocess.patient_level_metrics import calc_patient_level_metrics
 from repath.utils.seeds import set_seed
 """
 Global stuff
@@ -277,6 +279,38 @@ def retrain_patch_classifier_hnm() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
     
 
+def inference_on_train() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "train16"
+    output_dir17 = experiment_root / "post_hnm_results" / "train17"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train16 = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index16")
+    train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
+
+    # valid16.patches = valid16[0:32]
+    # valid17.patches = valid17[0:32]
+
+    transform = Compose([
+        RandomCrop((240, 240)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+    train_results16.save()
+
+    train_results17 = SlidesIndexResults.predict(train17, classifier, transform, 128, output_dir17,
+                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+    train_results17.save()
+
+
 def inference_on_valid() -> None:
     set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
@@ -390,17 +424,86 @@ def calculate_patch_level_results() -> None:
 
         # calculate patch level results
         title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results_16], splitdirout16, title16, ci=True)
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=ci)
+        print(len(split_results_17_annotated))
         if len(split_results_17_annotated) > 0:
             title17 = experiment_name + ' experiment ' + modelname + ' model Camelyon 17 ' + splitname + ' dataset'
-            patch_level_metrics([split_results_17_annotated], splitdirout17, title17, ci=True)
+            patch_level_metrics([split_results_17_annotated], splitdirout17, title17, ci=ci)
             title1617 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 & 17 ' + splitname + ' dataset'
-            patch_level_metrics([split_results_16, split_results_17_annotated], splitdirout1617, title1617, ci=True)
+            patch_level_metrics([split_results_16, split_results_17_annotated], splitdirout1617, title1617, ci=ci)
 
     set_seed(global_seed)
 
     #patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
     #patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
-    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
-    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+    patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=False)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=False)
 
+
+def calculate_slide_level_results() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index16") 
+
+    resultsin_post16_train = experiment_root / "post_hnm_results" / "train16"
+    resultsin_post17_train = experiment_root / "post_hnm_results" / "train17"
+    resultsin_post16_valid = experiment_root / "post_hnm_results" / "valid16"
+    resultsin_post17_valid = experiment_root / "post_hnm_results" / "valid17"
+    resultsin_post16_test = experiment_root / "post_hnm_results" / "test16"
+    resultsin_post17_test = experiment_root / "post_hnm_results" / "test17"
+
+    results_out_post16tr = experiment_root / "post_hnm_results" / "slide_results16_train"
+    results_out_post17tr = experiment_root / "post_hnm_results" / "slide_results17_train"
+    results_out_post16v = experiment_root / "post_hnm_results" / "slide_results16_valid"
+    results_out_post17v = experiment_root / "post_hnm_results" / "slide_results17_valid"
+    results_out_post16t = experiment_root / "post_hnm_results" / "slide_results16_test"
+    results_out_post17t = experiment_root / "post_hnm_results" / "slide_results17_test"
+
+    title_post16v = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
+    title_post17v = experiment_name + " experiment, post hnm model, Camelyon 17 valid dataset"
+    title_post16t = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
+    title_post17t = experiment_name + " experiment, post hnm model, Camelyon 17 test dataset"
+
+    valid_results_post16tr = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_train, results_dir_name, heatmap_dir_name)
+    valid_results_post17tr = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_train, results_dir_name, heatmap_dir_name)
+    valid_results_post16v = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_valid, results_dir_name, heatmap_dir_name)
+    valid_results_post17v = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_valid, results_dir_name, heatmap_dir_name)
+    valid_results_post16t = SlidesIndexResults.load(camelyon16.testing(), resultsin_post16_test, results_dir_name, heatmap_dir_name)
+    valid_results_post17t = SlidesIndexResults.load(camelyon17.testing(), resultsin_post17_test, results_dir_name, heatmap_dir_name)
+
+    slide_classifier_16 = SlideClassifierLee(camelyon16.training().slide_labels)
+    slide_classifier_16.calc_features(valid_results_post16tr, results_out_post16tr)
+    slide_classifier_16.calc_features(valid_results_post16v, results_out_post16v)
+    slide_classifier_16.calc_features(valid_results_post16t, results_out_post16t)
+    slide_classifier_16.predict_slide_level(features_dir=results_out_post16tr, classifier_dir=results_out_post16tr, retrain=True)
+    slide_classifier_16.predict_slide_level(features_dir=results_out_post16v, classifier_dir=results_out_post16tr, retrain=False)
+    slide_classifier_16.predict_slide_level(features_dir=results_out_post16t, classifier_dir=results_out_post16tr, retrain=False)
+    slide_classifier_16.calc_slide_metrics(title_post16v, results_out_post16v)
+    slide_classifier_16.calc_slide_metrics(title_post16t, results_out_post16t)
+
+    slide_classifier_17 = SlideClassifierLee(camelyon17.training().slide_labels)
+    slide_classifier_17.calc_features(valid_results_post17tr, results_out_post17tr)
+    slide_classifier_17.calc_features(valid_results_post17v, results_out_post17v)
+    slide_classifier_17.calc_features(valid_results_post17t, results_out_post17t)
+    slide_classifier_17.predict_slide_level(features_dir=results_out_post17tr, classifier_dir=results_out_post17tr, retrain=True)
+    slide_classifier_17.predict_slide_level(features_dir=results_out_post17v, classifier_dir=results_out_post17tr, retrain=False)
+    slide_classifier_17.predict_slide_level(features_dir=results_out_post17t, classifier_dir=results_out_post17tr, retrain=False)
+    slide_classifier_17.calc_slide_metrics(title_post17v, results_out_post17v)
+    slide_classifier_17.calc_slide_metrics(title_post17t, results_out_post17t)
+
+
+def calculate_patient_level_metrics() -> None:
+    slide_results_post17v = experiment_root / "post_hnm_results" / "slide_results17_valid"
+    slide_results_post17t = experiment_root / "post_hnm_results" / "slide_results17_test"
+
+    patient_results_post17v = experiment_root / "post_hnm_results" / "patient_results17_valid"
+    patient_results_post17t = experiment_root / "post_hnm_results" / "patient_results17_test"
+
+    title_post17v = experiment_name + " experiment, post hnm model, Camelyon 17 valid dataset"
+    title_post17t = experiment_name + " experiment, post hnm model, Camelyon 17 test dataset"
+
+    calc_patient_level_metrics(input_dir=slide_results_post17v, output_dir=patient_results_post17v, title=title_post17v, ci=False)
+    calc_patient_level_metrics(input_dir=slide_results_post17t, output_dir=patient_results_post17t, title=title_post17t, ci=False)
