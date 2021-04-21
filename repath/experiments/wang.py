@@ -476,10 +476,10 @@ def calculate_patch_level_results() -> None:
     valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
     cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
 
-    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=True)
-    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=True)
-    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=True)
-    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=True)
+    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=False)
+    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=False)
 
 
 def calculate_slide_level_results_pre() -> None:
@@ -499,20 +499,20 @@ def calculate_slide_level_results_pre() -> None:
     title_prev = experiment_name + " experiment, pre hnm model, Camelyon 16 valid dataset"
     title_pret = experiment_name + " experiment, pre hnm model, Camelyon 16 test dataset"
 
-    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
-    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
 
-    train_results_pre = SlidesIndexResults.load(camelyon16.training(), trainresultsin_pre, results_dir_name, heatmap_dir_name)
-    valid_results_pre = SlidesIndexResults.load(camelyon16_validation, validresultsin_pre, results_dir_name, heatmap_dir_name)
-    test_results_pre = SlidesIndexResults.load(camelyon16.testing(), validresultsin_pre, results_dir_name, heatmap_dir_name)
+    #train_results_pre = SlidesIndexResults.load(camelyon16.training(), trainresultsin_pre, results_dir_name, heatmap_dir_name)
+    #valid_results_pre = SlidesIndexResults.load(camelyon16_validation, validresultsin_pre, results_dir_name, heatmap_dir_name)
+    #test_results_pre = SlidesIndexResults.load(camelyon16.testing(), validresultsin_pre, results_dir_name, heatmap_dir_name)
 
     slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
-    slide_classifier.calc_features(train_results_pre, trainresults_out_pre)
-    slide_classifier.calc_features(valid_results_pre, validresults_out_pre)
-    slide_classifier.calc_features(test_results_pre, testresults_out_pre)
-    slide_classifier.predict_slide_level(features_dir=trainresults_out_pre, classifier_dir=trainresults_out_pre, retrain=True)
-    slide_classifier.predict_slide_level(features_dir=validresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
-    slide_classifier.predict_slide_level(features_dir=testresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    #slide_classifier.calc_features(train_results_pre, trainresults_out_pre)
+    #slide_classifier.calc_features(valid_results_pre, validresults_out_pre)
+    #slide_classifier.calc_features(test_results_pre, testresults_out_pre)
+    #slide_classifier.predict_slide_level(features_dir=trainresults_out_pre, classifier_dir=trainresults_out_pre, retrain=True)
+    #slide_classifier.predict_slide_level(features_dir=validresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    #slide_classifier.predict_slide_level(features_dir=testresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
     slide_classifier.calc_slide_metrics(title_prev, validresults_out_pre)
     slide_classifier.calc_slide_metrics(title_pret, testresults_out_pre)
 
@@ -535,19 +535,19 @@ def calculate_slide_level_results_post() -> None:
     title_postv = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
     title_postt = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
 
-    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
-    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
 
-    train_results_post = SlidesIndexResults.load(camelyon16.training(), trainresultsin_post, results_dir_name, heatmap_dir_name)
-    valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
-    test_results_post = SlidesIndexResults.load(camelyon16.testing(), validresultsin_post, results_dir_name, heatmap_dir_name)
+    #train_results_post = SlidesIndexResults.load(camelyon16.training(), trainresultsin_post, results_dir_name, heatmap_dir_name)
+    #valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    #test_results_post = SlidesIndexResults.load(camelyon16.testing(), validresultsin_post, results_dir_name, heatmap_dir_name)
 
     slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
     #slide_classifier.calc_features(train_results_post, trainresults_out_post)
     #slide_classifier.calc_features(valid_results_post, validresults_out_post)
     #slide_classifier.calc_features(test_results_post, testresults_out_post)
-    slide_classifier.predict_slide_level(features_dir=trainresults_out_post, classifier_dir=trainresults_out_post, retrain=True)
-    slide_classifier.predict_slide_level(features_dir=validresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
-    slide_classifier.predict_slide_level(features_dir=testresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    #slide_classifier.predict_slide_level(features_dir=trainresults_out_post, classifier_dir=trainresults_out_post, retrain=True)
+    #slide_classifier.predict_slide_level(features_dir=validresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    #slide_classifier.predict_slide_level(features_dir=testresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
     slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
     slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)

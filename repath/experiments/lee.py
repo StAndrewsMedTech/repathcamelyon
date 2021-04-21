@@ -434,8 +434,8 @@ def calculate_patch_level_results() -> None:
 
     set_seed(global_seed)
 
-    #patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=True)
-    #patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=True)
+    #patch_dataset_function("pre_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=False)
+    #patch_dataset_function("pre_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=False)
     patch_dataset_function("post_hnm", "valid", camelyon16.training(), camelyon17.training(), ci=False)
     patch_dataset_function("post_hnm", "test", camelyon16.testing(), camelyon17.testing(), ci=False)
 
@@ -467,32 +467,32 @@ def calculate_slide_level_results() -> None:
     title_post16t = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
     title_post17t = experiment_name + " experiment, post hnm model, Camelyon 17 test dataset"
 
-    valid_results_post16tr = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_train, results_dir_name, heatmap_dir_name)
-    valid_results_post17tr = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_train, results_dir_name, heatmap_dir_name)
-    valid_results_post16v = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_valid, results_dir_name, heatmap_dir_name)
-    valid_results_post17v = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_valid, results_dir_name, heatmap_dir_name)
-    valid_results_post16t = SlidesIndexResults.load(camelyon16.testing(), resultsin_post16_test, results_dir_name, heatmap_dir_name)
-    valid_results_post17t = SlidesIndexResults.load(camelyon17.testing(), resultsin_post17_test, results_dir_name, heatmap_dir_name)
+    #valid_results_post16tr = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_train, results_dir_name, heatmap_dir_name)
+    #valid_results_post17tr = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_train, results_dir_name, heatmap_dir_name)
+    #valid_results_post16v = SlidesIndexResults.load(camelyon16.training(), resultsin_post16_valid, results_dir_name, heatmap_dir_name)
+    #valid_results_post17v = SlidesIndexResults.load(camelyon17.training(), resultsin_post17_valid, results_dir_name, heatmap_dir_name)
+    #valid_results_post16t = SlidesIndexResults.load(camelyon16.testing(), resultsin_post16_test, results_dir_name, heatmap_dir_name)
+    #valid_results_post17t = SlidesIndexResults.load(camelyon17.testing(), resultsin_post17_test, results_dir_name, heatmap_dir_name)
 
     slide_classifier_16 = SlideClassifierLee(camelyon16.training().slide_labels)
-    slide_classifier_16.calc_features(valid_results_post16tr, results_out_post16tr)
-    slide_classifier_16.calc_features(valid_results_post16v, results_out_post16v)
-    slide_classifier_16.calc_features(valid_results_post16t, results_out_post16t)
-    slide_classifier_16.predict_slide_level(features_dir=results_out_post16tr, classifier_dir=results_out_post16tr, retrain=True)
-    slide_classifier_16.predict_slide_level(features_dir=results_out_post16v, classifier_dir=results_out_post16tr, retrain=False)
-    slide_classifier_16.predict_slide_level(features_dir=results_out_post16t, classifier_dir=results_out_post16tr, retrain=False)
+    #slide_classifier_16.calc_features(valid_results_post16tr, results_out_post16tr)
+    #slide_classifier_16.calc_features(valid_results_post16v, results_out_post16v)
+    #slide_classifier_16.calc_features(valid_results_post16t, results_out_post16t)
+    #slide_classifier_16.predict_slide_level(features_dir=results_out_post16tr, classifier_dir=results_out_post16tr, retrain=True)
+    #slide_classifier_16.predict_slide_level(features_dir=results_out_post16v, classifier_dir=results_out_post16tr, retrain=False)
+    #slide_classifier_16.predict_slide_level(features_dir=results_out_post16t, classifier_dir=results_out_post16tr, retrain=False)
     slide_classifier_16.calc_slide_metrics(title_post16v, results_out_post16v)
     slide_classifier_16.calc_slide_metrics(title_post16t, results_out_post16t)
 
     slide_classifier_17 = SlideClassifierLee(camelyon17.training().slide_labels)
-    slide_classifier_17.calc_features(valid_results_post17tr, results_out_post17tr)
-    slide_classifier_17.calc_features(valid_results_post17v, results_out_post17v)
-    slide_classifier_17.calc_features(valid_results_post17t, results_out_post17t)
-    slide_classifier_17.predict_slide_level(features_dir=results_out_post17tr, classifier_dir=results_out_post17tr, retrain=True)
-    slide_classifier_17.predict_slide_level(features_dir=results_out_post17v, classifier_dir=results_out_post17tr, retrain=False)
-    slide_classifier_17.predict_slide_level(features_dir=results_out_post17t, classifier_dir=results_out_post17tr, retrain=False)
-    slide_classifier_17.calc_slide_metrics(title_post17v, results_out_post17v)
-    slide_classifier_17.calc_slide_metrics(title_post17t, results_out_post17t)
+    #slide_classifier_17.calc_features(valid_results_post17tr, results_out_post17tr)
+    #slide_classifier_17.calc_features(valid_results_post17v, results_out_post17v)
+    #slide_classifier_17.calc_features(valid_results_post17t, results_out_post17t)
+    #slide_classifier_17.predict_slide_level(features_dir=results_out_post17tr, classifier_dir=results_out_post17tr, retrain=True)
+    #slide_classifier_17.predict_slide_level(features_dir=results_out_post17v, classifier_dir=results_out_post17tr, retrain=False)
+    #slide_classifier_17.predict_slide_level(features_dir=results_out_post17t, classifier_dir=results_out_post17tr, retrain=False)
+    slide_classifier_17.calc_slide_metrics(title_post17v, results_out_post17v, labelorder=['negative','itc', 'micro', 'macro'])
+    slide_classifier_17.calc_slide_metrics(title_post17t, results_out_post17t, labelorder=['negative','itc', 'micro', 'macro'])
 
 
 def calculate_patient_level_metrics() -> None:

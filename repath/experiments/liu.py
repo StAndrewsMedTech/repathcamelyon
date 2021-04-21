@@ -399,7 +399,7 @@ def calculate_patch_level_results_valid_16() -> None:
 
     # calculate patch level results
     title16 = experiment_name + ' experiment Camelyon 16 valid dataset'
-    patch_level_metrics([split_results], dirout, title16, ci=False)
+    patch_level_metrics([split_results], dirout, title16, ci=False, optimal_threshold=0.9)
 
 
 def calculate_patch_level_results_test_16() -> None:     
@@ -421,7 +421,7 @@ def calculate_patch_level_results_test_16() -> None:
 
     # calculate patch level results
     title16 = experiment_name + ' experiment Camelyon 16 test dataset'
-    patch_level_metrics([split_results], dirout, title16, ci=False)
+    patch_level_metrics([split_results], dirout, title16, ci=False, optimal_threshold=0.9)
 
 
 def calculate_slide_level_results() -> None:
@@ -447,8 +447,8 @@ def calculate_slide_level_results() -> None:
 
     slide_classifier = SlideClassifierLiu(camelyon16.training().slide_labels)
     #slide_classifier.calc_features(valid_results_post, validresults_out_post)
-    slide_classifier.calc_features(test_results_post, testresults_out_post)
-    #slide_classifier.predict_slide_level(features_dir=validresults_out_post)
+    #slide_classifier.calc_features(test_results_post, testresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_post)
     slide_classifier.predict_slide_level(features_dir=testresults_out_post)
-    #slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
+    slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
     slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)

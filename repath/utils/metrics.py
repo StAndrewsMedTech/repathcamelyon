@@ -2,18 +2,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=None):
+def plotROC(xvalues, yvalues, summary_value, title, xlabel, ylabel, x_axis_lim=None, y_axis_lim=None):
     title_lab = f'{title}\n score = {round(summary_value, 4)}'
     fig = plt.figure(figsize=(8,6))
     plt.xlabel(xlabel, fontsize=14)
     plt.ylabel(ylabel, fontsize=14)
-    fig.suptitle(title_lab, fontsize=14, x=1.005)
+    fig.suptitle(title_lab, fontsize=14)
     plt.plot(xvalues, yvalues, '-', color='#000000')
     xleft, xright = plt.xlim()
     if x_axis_lim is not None:
         xleft = x_axis_lim[0]
         xright = x_axis_lim[1]
+    ylow, yhigh = plt.ylim()
+    if y_axis_lim is not None:
+        ylow = y_axis_lim[0]
+        yhigh = y_axis_lim[1]
     plt.xlim(xleft, xright)
+    plt.ylim(ylow, yhigh)
     plt.tight_layout()
     return plt
 
@@ -101,7 +106,7 @@ def conf_mat_plot_heatmap(cm, display_labels, title_in, heatmap_type='true'):
             ax.axhline(i - .5, color='black', linewidth=1.0)
             ax.axvline(j - .5, color='black', linewidth=1.0)
 
-    ax.matshow(color_mapping, cmap=cmap)
+    ax.matshow(color_mapping, cmap=cmap, vmin=0, vmax=255)
 
     ax.set_xlabel("Predicted label", fontsize=16)
     ax.set_ylabel("True label", fontsize=16)
@@ -130,6 +135,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
     fig, ax = plt.subplots(figsize=(8,8))
     n_classes = cm.shape[0]
     cmap = 'Greys'
+    print(display_labels)
 
     if heatmap_type == 'percent':
         sum_vals = np.sum(cm)
@@ -153,7 +159,7 @@ def conf_mat_plot_heatmap_CI(cm, cm_ci, display_labels, title_in, heatmap_type='
             ax.axhline(i - .5, color='black', linewidth=1.0)
             ax.axvline(j - .5, color='black', linewidth=1.0)
 
-    ax.matshow(color_mapping, cmap=cmap)
+    ax.matshow(color_mapping, cmap=cmap, vmin=0, vmax=255)
 
     ax.set_xlabel("Predicted label", fontsize=16)
     ax.set_ylabel("True label", fontsize=16)

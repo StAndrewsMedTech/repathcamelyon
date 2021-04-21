@@ -9,7 +9,7 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc, accuracy_sco
 from repath.preprocess.patching import CombinedIndex
 from repath.postprocess.results import SlidesIndexResults
 from repath.utils.convert import remove_item_from_dict
-from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve, save_conf_mat_plot, save_conf_mat_plot_ci
+from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve, save_conf_mat_plot, save_conf_mat_plot_ci, binary_curves
 
 
 def calc_patch_level_metrics(patches_df: pd.DataFrame, poslabel: int = 2, posname: str = 'tumor', optimal_threshold: float = 0.5) -> pd.DataFrame:
@@ -53,9 +53,11 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
     patch_results_out = calc_patch_level_metrics(all_patches.patches_df, poslabel, posname, optimal_threshold)
 
     # use precision recall from scikit - calculates every threshold
-    patch_precisions, patch_recalls, patch_thresholds = precision_recall_curve(all_patches.patches_df.label,
-                                                                               all_patches.patches_df[posname],
-                                                                               pos_label=poslabel)
+    # patch_precisions, patch_recalls, patch_thresholds = precision_recall_curve(all_patches.patches_df.label,
+    #                                                                            all_patches.patches_df[posname],
+    #                                                                            pos_label=poslabel)
+    patch_precisions, patch_recalls, _, patch_thresholds = binary_curves(all_patches.patches_df.label.to_numpy(), all_patches.patches_df[posname].to_numpy(), poslabel)
+
     # calculate pr auc
     patch_pr_auc = auc(patch_recalls, patch_precisions)
     # add to list of results
@@ -66,7 +68,7 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
                                columns=['patch_precisions', 'patch_recalls', 'patch_thresholds'])
     patch_curve.to_csv(save_dir / 'patch_pr_curve.csv', index=False)
     title_pr = "Patch Classification Precision-Recall Curve for \n" + data_title
-    pr_curve_plt = plotROC(patch_recalls, patch_precisions, patch_pr_auc, title_pr, 'Recall', 'Precision')
+    pr_curve_plt = plotROC(patch_recalls[1:], patch_precisions[1:], patch_pr_auc, title_pr, 'Recall', 'Precision', y_axis_lim = [0, 1])
     pr_curve_plt.savefig(save_dir/ "patch_pr_curve.png")
 
     # convert list to dataframe with row name - results
@@ -75,7 +77,7 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
     patch_results_out.index = ['results']
     
     # create confidence matrix plot and write out
-    title_cm = "Patch Classification Confusion Matrix for \n" + data_title
+    title_cm = "Patch Classification Confusion Matrix for \n" + data_title + "\n accuracy = " + str(round(patch_results_out.loc['results', 'accuracy'], 4))
     save_conf_mat_plot(patch_results_out[['tn', 'fp', 'fn', 'tp']], ['normal', 'tumor'], title_cm, save_dir)
 
     if ci:
@@ -133,7 +135,11 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
         pr_curve_plt.savefig(save_dir / "patch_pr_curve_ci.png")
 
         # create confidence matrix plot with confidence interval and write out
-        title_cm = "Patch Classification Confusion Matrix for \n" + data_title
+        acc_res = round(patch_results_out.loc['results', 'accuracy'], 4)
+        acc_low = round(patch_results_out.loc['ci_lower_bound', 'accuracy'], 4)
+        acc_high = round(patch_results_out.loc['ci_upper_bound', 'accuracy'], 4)
+        summary_value_string = "\n accuracy = " + str(acc_res) + "(" + str(acc_low) + ", " + str(acc_high) + ")"
+        title_cm = "Patch Classification Confusion Matrix for \n" + data_title +  summary_value_string
         save_conf_mat_plot_ci(patch_results_out[['tn', 'fp', 'fn', 'tp']], ['normal', 'tumor'], title_cm, save_dir)
 
     # write out patch summary result dataframe
