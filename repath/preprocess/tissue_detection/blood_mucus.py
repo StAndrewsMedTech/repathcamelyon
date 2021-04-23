@@ -3,15 +3,19 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pandas as pd
 from numpy.lib.stride_tricks import as_strided
 from PIL import Image
+from sklearn.utils.validation import check_is_fitted
 
 import repath.data.datasets.bloodmucus as bloodmucus
 from repath.data.slides.isyntax import Slide
 from repath.preprocess.tissue_detection.multiscale_features import multiscale_basic_features
+from repath.utils.metrics import conf_mat_plot_heatmap
 
 
-def get_slides_annots(dset, level):
+
+def get_slides_annots(dset, level, default_label="tissue"):
     thumbz = []
     annotz = []
 
@@ -20,11 +24,28 @@ def get_slides_annots(dset, level):
         with Slide(dset.root / slide_path) as slide:
             thumb = slide.get_thumbnail(level)
             thumbz.append(thumb)
-            annotations = dset.load_annotations(annot_path)
+            annotations = dset.load_annotations(annot_path, default_label)
             annot = annotations.render(thumb.shape[0:2], 2**level)
             annotz.append(annot)
 
     return thumbz, annotz
+
+
+def get_annot_areas(dset, level):
+    annotz = []
+
+    for dd in dset:
+        slide_path, annot_path, _, _ = dd
+        with Slide(dset.root / slide_path) as slide:
+            thumb = slide.get_thumbnail(level)
+            annotations = dset.load_annotated_area(annot_path)
+            if len(annotations.annotations) > 0:
+                annot = annotations.render(thumb.shape[0:2], 2**level)
+            else:
+                annot = np.ones(thumb.shape, dtype=np.uint8) * 5
+            annotz.append(annot)
+
+    return annotz
 
 
 def apply_tissue_detection(thumbz, tissue_detector):
@@ -41,22 +62,20 @@ def apply_tissue_detection(thumbz, tissue_detector):
     return filtered_thumbz
 
 
-def get_features(filtered_thumb):
-    sigma_min = 1
-    sigma_max = 16
+def get_features(filtered_thumb, sigma_min = 1, sigma_max=16, edges=False):
     features_func = partial(multiscale_basic_features,
-                            intensity=True, edges=False, texture=True,
+                            intensity=True, edges=edges, texture=True,
                             sigma_min=sigma_min, sigma_max=sigma_max,
                             multichannel=True)
     features = features_func(filtered_thumb)
     return features
 
 
-def get_features_list(filtered_thumbz):
+def get_features_list(filtered_thumbz, sigma_min = 1, sigma_max=16, edges=False):
 
     featz = []
     for tt in filtered_thumbz:
-        features = get_features(tt)
+        features = get_features(tt, sigma_min, sigma_max, edges)
         featz.append(features)
 
     return featz
@@ -95,7 +114,9 @@ def fit_segmenter_multi(labels_list, features_list, clf):
             training_data_all = np.vstack((training_data_all, training_data))
         training_labels = labels[mask].ravel()
         training_labels_all = np.hstack((training_labels_all, training_labels))
+    print(training_data_all.shape, training_labels_all.shape)
     clf.fit(training_data_all, training_labels_all)
+    print(clf, check_is_fitted(clf))
     return clf
 
 
@@ -188,6 +209,46 @@ def pool_blood_mucus(A, kernel_size, stride, padding):
     return output_new
     
 
+def calc_confusion_mat_3class(true_img, pred_img):
+    tru0_pred0 = np.sum(np.logical_and(true_img == 0, pred_img == 0))
+    tru0_pred1 = np.sum(np.logical_and(true_img == 0, pred_img == 1))
+    tru0_pred2 = np.sum(np.logical_and(true_img == 0, pred_img == 2))
+    tru1_pred0 = np.sum(np.logical_and(true_img == 1, pred_img == 0))
+    tru1_pred1 = np.sum(np.logical_and(true_img == 1, pred_img == 1))
+    tru1_pred2 = np.sum(np.logical_and(true_img == 1, pred_img == 2))
+    tru2_pred0 = np.sum(np.logical_and(true_img == 2, pred_img == 0))
+    tru2_pred1 = np.sum(np.logical_and(true_img == 2, pred_img == 1))
+    tru2_pred2 = np.sum(np.logical_and(true_img == 2, pred_img == 2))
+
+    cm = [tru0_pred0, tru0_pred1, tru0_pred2, tru1_pred0, tru1_pred1, tru1_pred2, tru2_pred0, tru2_pred1, tru2_pred2]
+    return cm
 
 
+def calc_confusion_mat_2class(true_img, pred_img):
+    tru0_pred0 = np.sum(np.logical_and(true_img == 0, np.logical_not(pred_img == 1)))
+    tru0_pred1 = np.sum(np.logical_and(true_img == 0, pred_img == 1))
+    tru1_pred0 = np.sum(np.logical_and(true_img == 1, np.logical_not(pred_img == 1)))
+    tru1_pred1 = np.sum(np.logical_and(true_img == 1, pred_img == 1))
+    cm2 = [tru0_pred0, tru0_pred1, tru1_pred0, tru1_pred1]
+    return cm2
 
+def save_confusion_mat(cm, save_dir, exp_name):
+    cm_pd = np.array(cm, dtype=np.uint)
+    cm_pd = np.expand_dims(cm_pd, axis=0)
+    title_cm = 'confusion matrix blood mucus ' + exp_name
+    if len(cm) == 4:
+        cm_pd = pd.DataFrame(cm_pd, columns=['tn', 'fp', 'fn', 'tp'])
+        cm_pd.to_csv(save_dir / 'confusion_matrix_2class.csv')
+        display_labels = ['not tissue', 'tissue']
+        cm_np = np.reshape(cm, (2,2))
+        cm_np = np.array(cm_np,dtype=np.uint)
+        cm_out = conf_mat_plot_heatmap(cm_np, display_labels, title_cm)
+        cm_out.get_figure().savefig(save_dir / 'confusion_matrix_2class.png')
+    else:
+        cm_pd = pd.DataFrame(cm_pd, columns=['true0pred0', 'true0pred1', 'true0pred2', 'true1pred0', 'true1pred1', 'true1pred2', 'true2pred0', 'true2pred1', 'true2pred2'])
+        cm_pd.to_csv(save_dir / 'confusion_matrix_3class.csv')
+        display_labels = ['background', 'tissue', 'blood or mucus']
+        cm_np = np.reshape(cm, (3,3))
+        cm_np = np.array(cm_np,dtype=np.uint)
+        cm_out = conf_mat_plot_heatmap(cm_np, display_labels, title_cm)
+        cm_out.get_figure().savefig(save_dir / 'confusion_matrix_3class.png')

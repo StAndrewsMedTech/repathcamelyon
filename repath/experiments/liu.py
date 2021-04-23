@@ -26,6 +26,7 @@ from repath.postprocess.slide_level_metrics import SlideClassifierLiu
 from repath.utils.convert import average_patches
 from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
+from repath.postprocess.find_lesions import LesionFinderLiu
 
 
 """
@@ -452,3 +453,32 @@ def calculate_slide_level_results() -> None:
     slide_classifier.predict_slide_level(features_dir=testresults_out_post)
     slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
     slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)
+
+
+def calculate_lesion_level_results() -> None:
+    set_seed(global_seed)
+
+    resultsin_post_v = experiment_root / "inference_results" / "valid16"
+    resultsin_post_t = experiment_root / "inference_results" / "test16"
+
+    results_out_post_v = experiment_root / "inference_results" / "lesion_results" / "valid16"
+    results_out_post_t = experiment_root / "inference_results" / "lesion_results" / "test16"
+
+    mask_dir_v = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'training'
+    mask_dir_t = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'testing'
+
+    title_post_v = experiment_name + " experiment, Camelyon 16 valid dataset"
+    title_post_t = experiment_name + " experiment, Camelyon 16 test dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, resultsin_post_v, "results", "heatmaps")
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), resultsin_post_t, "results", "heatmaps")
+
+    lesion_finder_v_post = LesionFinderLiu(mask_dir_v, results_out_post_v)
+    lesion_finder_v_post.calc_lesions(valid_results_post)
+    lesion_finder_v_post.calc_lesion_results(title_post_v)
+    lesion_finder_t_post = LesionFinderLiu(mask_dir_t, results_out_post_t)
+    lesion_finder_t_post.calc_lesions(test_results_post)
+    lesion_finder_t_post.calc_lesion_results(title_post_t)

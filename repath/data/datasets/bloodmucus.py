@@ -16,13 +16,26 @@ class BloodMucus(Dataset):
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
     
-    def load_annotations(self, file: Path) -> AnnotationSet:
+    def load_annotations(self, file: Path, default_label: str) -> AnnotationSet:
         group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background", "Ignore*": "background"}
         labels = {"background": 0, "tissue": 1, "blood": 2, "mucus": 3, "blood_mucus": 4}
-        default_label = "tissue"
         annotations = load_annotations(file, group_labels, default_label) if file else []
         labels_order = ["background", "blood", "mucus", "blood_mucus", "tissue"]
         return AnnotationSet(annotations, labels, labels_order, "background")
+
+    def load_annotated_area(self, file: Path) -> AnnotationSet:
+        group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background", "Ignore*": "background", "annotated_area": "annotated_area"}
+        labels = {"background": 0, "annotated_area": 5}
+        # assumes the annotated area annotation is unlabelled
+        default_label = "annotated_area"
+        annotations = load_annotations(file, group_labels, default_label) if file else []
+        # remove everything except annotated areas
+        annotated_areas = []
+        for ann in annotations:
+            if ann.label not in ["tissue", "blood", "mucus", "blood_mucus"]:
+                annotated_areas.append(ann)
+        labels_order = ["background", "annotated_area"]
+        return AnnotationSet(annotated_areas, labels, labels_order, "background")
 
     @property
     def slide_cls(self) -> SlideBase:

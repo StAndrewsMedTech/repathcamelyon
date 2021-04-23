@@ -71,7 +71,7 @@ class LesionFinder(ABC):
 
         froc_plot_title = "Free Receiver Operating Characteristic Curve for Lesion Detection \n" + title
         froc_plot = plotROC(froc_curve.total_FPs, froc_curve.total_sensitivity, froc, froc_plot_title,
-                            "Average False Positives", "Metastatis Detection Sensitivity", [0, 8])
+                            "Average False Positives", "Metastatis Detection Sensitivity", [0, 8], [0, 1])
         froc_plot.savefig(self.output_dir / 'froc_curve.png')
 
         froc_df = pd.DataFrame([froc], columns=['froc'])
@@ -218,15 +218,17 @@ class LesionFinderWang(LesionFinder):
 
 
 class LesionFinderLiu(LesionFinder):
-    def find_slide_lesions(self, result: SlidePatchSetResults, posname: str = 'tumor', prob_cutoff: float = 0.5, 
+    def find_slide_lesions(self, result: SlidePatchSetResults, posname: str = 'tumor', prob_cutoff: float = 1.0, 
                      patch_radius: int = 6) -> pd.DataFrame:
-
+        print(result.slide_path.stem)
         # set probabilities below the cutoff value to zero
         result.patches_df[posname] = np.where(result.patches_df[posname] < prob_cutoff, 0, result.patches_df[posname])
-
+        print("nperslide: ", np.sum(result.patches_df['tumor'] > 0))
         # find radius size in pixels rather than patches
         ### TODO: check if patch size at this point includes the border or not, need it without the border
-        radius_size = patch_radius * result.patch_size
+        ### HACK patch size here includes border we need it without border so have hard coded for now :(
+        radius_size = patch_radius * 128
+        print(radius_size, patch_radius, result.patch_size)
 
         # list to store lesions quicker to convert to dataframe from list once than append each row
         list_lesions = []
@@ -245,14 +247,16 @@ class LesionFinderLiu(LesionFinder):
             # find rows that are closer than radius size
             radius_mask = result.patches_df.distance < radius_size
             # find number of pixels are within radius greater than prob cutoff equivalent of size 
-            row_out['pixels'] = np.sum(result.patches_df[radius_mask] > 0)
+            row_out['pixels'] = np.sum(radius_mask)
             # set probability for all rows that are within radius to zero
             result.patches_df[posname] = np.where(radius_mask, 0, result.patches_df[posname])
 
             # add to output
             list_lesions.append(row_out)
 
-        output_df = pd.DataFrame(list_lesions, columns=["prob_score", "centre_x", "centre_y", "pixels"])
+        output_df = pd.DataFrame(columns=["prob_score", "centre_x", "centre_y", "pixels"])
+        for ll in range(len(list_lesions)):
+            output_df = pd.concat((output_df, list_lesions[ll]))
 
         output_df["filename"] = result.slide_path.stem
 
@@ -260,7 +264,7 @@ class LesionFinderLiu(LesionFinder):
 
     def calc_lesions(self, results: SlidesIndexResults) -> pd.DataFrame:
         
-        lesions_all_slides = pd.DataFrame(columns=["prob_score", "centre_row", "centre_col", "pixels", "filename"])
+        lesions_all_slides = pd.DataFrame(columns=["prob_score", "centre_x", "centre_y", "pixels", "filename"])
 
         for result in results:
             lesions_out = self.find_slide_lesions(result)

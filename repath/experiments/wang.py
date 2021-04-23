@@ -22,6 +22,7 @@ from torchvision.models import GoogLeNet
 from repath.utils.seeds import set_seed
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.slide_level_metrics import SlideClassifierWang
+from repath.postprocess.find_lesions import LesionFinderWang
 
 
 """
@@ -499,20 +500,20 @@ def calculate_slide_level_results_pre() -> None:
     title_prev = experiment_name + " experiment, pre hnm model, Camelyon 16 valid dataset"
     title_pret = experiment_name + " experiment, pre hnm model, Camelyon 16 test dataset"
 
-    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
-    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
 
-    #train_results_pre = SlidesIndexResults.load(camelyon16.training(), trainresultsin_pre, results_dir_name, heatmap_dir_name)
-    #valid_results_pre = SlidesIndexResults.load(camelyon16_validation, validresultsin_pre, results_dir_name, heatmap_dir_name)
-    #test_results_pre = SlidesIndexResults.load(camelyon16.testing(), validresultsin_pre, results_dir_name, heatmap_dir_name)
+    train_results_pre = SlidesIndexResults.load(camelyon16.training(), trainresultsin_pre, results_dir_name, heatmap_dir_name)
+    valid_results_pre = SlidesIndexResults.load(camelyon16_validation, validresultsin_pre, results_dir_name, heatmap_dir_name)
+    test_results_pre = SlidesIndexResults.load(camelyon16.testing(), validresultsin_pre, results_dir_name, heatmap_dir_name)
 
     slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
-    #slide_classifier.calc_features(train_results_pre, trainresults_out_pre)
-    #slide_classifier.calc_features(valid_results_pre, validresults_out_pre)
-    #slide_classifier.calc_features(test_results_pre, testresults_out_pre)
-    #slide_classifier.predict_slide_level(features_dir=trainresults_out_pre, classifier_dir=trainresults_out_pre, retrain=True)
-    #slide_classifier.predict_slide_level(features_dir=validresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
-    #slide_classifier.predict_slide_level(features_dir=testresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    slide_classifier.calc_features(train_results_pre, trainresults_out_pre)
+    slide_classifier.calc_features(valid_results_pre, validresults_out_pre)
+    slide_classifier.calc_features(test_results_pre, testresults_out_pre)
+    slide_classifier.predict_slide_level(features_dir=trainresults_out_pre, classifier_dir=trainresults_out_pre, retrain=True)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
     slide_classifier.calc_slide_metrics(title_prev, validresults_out_pre)
     slide_classifier.calc_slide_metrics(title_pret, testresults_out_pre)
 
@@ -535,19 +536,65 @@ def calculate_slide_level_results_post() -> None:
     title_postv = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
     title_postt = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
 
-    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
-    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
 
-    #train_results_post = SlidesIndexResults.load(camelyon16.training(), trainresultsin_post, results_dir_name, heatmap_dir_name)
-    #valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
-    #test_results_post = SlidesIndexResults.load(camelyon16.testing(), validresultsin_post, results_dir_name, heatmap_dir_name)
+    train_results_post = SlidesIndexResults.load(camelyon16.training(), trainresultsin_post, results_dir_name, heatmap_dir_name)
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), validresultsin_post, results_dir_name, heatmap_dir_name)
 
     slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
-    #slide_classifier.calc_features(train_results_post, trainresults_out_post)
-    #slide_classifier.calc_features(valid_results_post, validresults_out_post)
-    #slide_classifier.calc_features(test_results_post, testresults_out_post)
-    #slide_classifier.predict_slide_level(features_dir=trainresults_out_post, classifier_dir=trainresults_out_post, retrain=True)
-    #slide_classifier.predict_slide_level(features_dir=validresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
-    #slide_classifier.predict_slide_level(features_dir=testresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    slide_classifier.calc_features(train_results_post, trainresults_out_post)
+    slide_classifier.calc_features(valid_results_post, validresults_out_post)
+    slide_classifier.calc_features(test_results_post, testresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=trainresults_out_post, classifier_dir=trainresults_out_post, retrain=True)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
     slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
     slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)
+
+
+def calculate_lesion_level_results_valid() -> None:
+    set_seed(global_seed)
+
+    resultsin_pre = experiment_root / "pre_hnm_results" / "valid16" 
+    resultsin_post = experiment_root / "post_hnm_results" / "valid16" 
+
+    results_out_post = experiment_root / "post_hnm_results" / "lesion_results" / "valid16"
+
+    mask_dir = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'training'
+
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    valid_results_pre = SlidesIndexResults.load(camelyon16_validation, resultsin_pre, "results", "heatmaps")
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, resultsin_post, "results", "heatmaps")
+
+    # wang example need both pre and post
+    lesion_finder = LesionFinderWang(mask_dir, results_out_post)
+    lesion_finder.calc_lesions(valid_results_pre, valid_results_post)
+    lesion_finder.calc_lesion_results(title_post)
+    
+
+
+def calculate_lesion_level_results_test() -> None:
+    set_seed(global_seed)
+
+    resultsin_pre = experiment_root / "pre_hnm_results" / "test16" 
+    resultsin_post = experiment_root / "post_hnm_results" / "test16" 
+
+    results_out_post = experiment_root / "post_hnm_results" / "lesion_results" / "test16"
+
+    mask_dir = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'testing'
+
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
+
+    test_results_pre = SlidesIndexResults.load(camelyon16.testing(), resultsin_pre, "results", "heatmaps")
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), resultsin_post, "results", "heatmaps")
+
+    # wang example need both pre and post
+    lesion_finder = LesionFinderWang(mask_dir, results_out_post)
+    lesion_finder.calc_lesions(test_results_pre, test_results_post)
+    lesion_finder.calc_lesion_results(title_post)

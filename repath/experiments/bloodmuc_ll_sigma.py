@@ -16,10 +16,12 @@ from repath.utils.convert import get_concat_h, get_concat_v
 from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
 
+from sklearn.utils.validation import check_is_fitted
+
 """
 Global stuff
 """
-experiment_name = "bloodmucus"
+experiment_name = "bloodmucus_ll_sigma"
 experiment_root = project_root() / "experiments" / experiment_name
 
 global_seed = 123
@@ -32,7 +34,7 @@ def train_classifier() -> None:
     ### generic can be reused for multiple classifiers
     # set values
     set_seed(global_seed)
-    level_label = 6
+    level_label = 5
 
     # read in slides and annotations for training
     dset = bloodm.training()
@@ -47,12 +49,13 @@ def train_classifier() -> None:
 
     ### classifier specific 
     # get features
-    featz = get_features_list(filtered_thumbz)
+    featz = get_features_list(filtered_thumbz, edges=True, sigma_max=64)
 
     # apply classifier
     clf = RandomForestClassifier(n_estimators=50, n_jobs=-1, max_depth=10, max_samples=0.05)
     clf = fit_segmenter_multi(annotz, featz, clf)
-    print("save: ", experiment_root)
+    print("save: ", experiment_root, check_is_fitted(clf))
+    experiment_root.mkdir(parents=True, exist_ok=True)
     dump(clf, experiment_root / 'rforest.joblib') 
 
 
@@ -60,7 +63,7 @@ def predict_images() -> None:
     ### generic can be reused for multiple classifiers
     # set values
     set_seed(global_seed)
-    level_label = 6
+    level_label = 5
     thumb_level = 7
 
     # read in slides and annotations for training
@@ -80,7 +83,7 @@ def predict_images() -> None:
     filtered_thumbz = apply_tissue_detection(thumbz, tissue_detector)
 
     # get features
-    featz = get_features_list(filtered_thumbz)
+    featz = get_features_list(filtered_thumbz, edges=True, sigma_max=64)
 
     # set output directories
     labels_dir = experiment_root / 'labels'
@@ -97,7 +100,7 @@ def predict_images() -> None:
     ### classifier specific 
     # load classifier
     clf = load(experiment_root / 'rforest.joblib')
-    print(clf)
+    print(clf, check_is_fitted(clf))
     # settings for classifier
     patch_level = 0
     patch_size = 2**thumb_level
@@ -110,7 +113,7 @@ def predict_images() -> None:
 
     for idx, thumb in enumerate(thumbz):
         ### classifier specific
-        features = get_features(thumb)
+        features = get_features(thumb, edges=True, sigma_max=64)
         output = predict_segmenter(features, clf)
         tissue_mask = tissue_detector(thumb)
         filtered_output = np.where(np.logical_not(tissue_mask), 0, output)
@@ -168,6 +171,6 @@ def predict_images() -> None:
         confusion_matrix_2class[idx, :] = cm2cl
 
     cm_3class_all = np.sum(confusion_matrix_3class, axis=0)
-    save_confusion_mat(cm_3class_all, experiment_root)
+    save_confusion_mat(cm_3class_all, experiment_root, experiment_name)
     cm_2class_all = np.sum(confusion_matrix_2class, axis=0)
-    save_confusion_mat(cm_2class_all, experiment_root)
+    save_confusion_mat(cm_2class_all, experiment_root, experiment_name)
