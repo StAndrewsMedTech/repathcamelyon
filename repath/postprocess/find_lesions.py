@@ -218,7 +218,7 @@ class LesionFinderWang(LesionFinder):
 
 
 class LesionFinderLiu(LesionFinder):
-    def find_slide_lesions(self, result: SlidePatchSetResults, posname: str = 'tumor', prob_cutoff: float = 1.0, 
+    def find_slide_lesions(self, result: SlidePatchSetResults, posname: str = 'tumor', prob_cutoff: float = 0.5, 
                      patch_radius: int = 6) -> pd.DataFrame:
         print(result.slide_path.stem)
         # set probabilities below the cutoff value to zero

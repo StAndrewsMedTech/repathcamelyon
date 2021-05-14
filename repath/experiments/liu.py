@@ -443,12 +443,12 @@ def calculate_slide_level_results() -> None:
     #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
     #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
 
-    #valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
     test_results_post = SlidesIndexResults.load(camelyon16.testing(), testresultsin_post, results_dir_name, heatmap_dir_name)
 
     slide_classifier = SlideClassifierLiu(camelyon16.training().slide_labels)
-    #slide_classifier.calc_features(valid_results_post, validresults_out_post)
-    #slide_classifier.calc_features(test_results_post, testresults_out_post)
+    slide_classifier.calc_features(valid_results_post, validresults_out_post)
+    slide_classifier.calc_features(test_results_post, testresults_out_post)
     slide_classifier.predict_slide_level(features_dir=validresults_out_post)
     slide_classifier.predict_slide_level(features_dir=testresults_out_post)
     slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
@@ -458,8 +458,8 @@ def calculate_slide_level_results() -> None:
 def calculate_lesion_level_results() -> None:
     set_seed(global_seed)
 
-    resultsin_post_v = experiment_root / "inference_results" / "valid16"
-    resultsin_post_t = experiment_root / "inference_results" / "test16"
+    resultsin_post_v = experiment_root / "inference_results" / "valid16mean"
+    resultsin_post_t = experiment_root / "inference_results" / "test16mean"
 
     results_out_post_v = experiment_root / "inference_results" / "lesion_results" / "valid16"
     results_out_post_t = experiment_root / "inference_results" / "lesion_results" / "test16"

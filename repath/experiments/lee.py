@@ -125,6 +125,7 @@ def preprocess_samples() -> None:
     train17 = SlidesIndex.load(train_data17, experiment_root / "train_index17")
     valid17 = SlidesIndex.load(train_data17, experiment_root / "valid_index17")
 
+
     # sample from train and valid sets
     train_samples = balanced_sample([train16, train17], 47574)
     valid_samples = balanced_sample([valid16, valid17], 29000)
