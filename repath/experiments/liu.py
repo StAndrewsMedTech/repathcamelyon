@@ -16,7 +16,7 @@ from torchvision.models import inception_v3
 
 from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.camelyon16 as camelyon16
-from repath.preprocess.tissue_detection import TissueDetectorOTSU
+from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random, get_subset_of_dataset
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
@@ -34,7 +34,7 @@ Global stuff
 """
 experiment_name = "liu"
 experiment_root = project_root() / "experiments" / experiment_name
-tissue_detector = TissueDetectorOTSU()
+tissue_detector = TissueDetectorGreyScale()
 patch_border = 171
 patch_jitter = 8
 

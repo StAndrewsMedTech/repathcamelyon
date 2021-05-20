@@ -18,11 +18,22 @@ def get_subset_of_dataset(slides_index_to_match, whole_dataset):
     # create new dataset initially with both training and valid
     dataset_subset = whole_dataset
     # chop new dataset down to be just slide in valid set
-    mask = [sl in slides_to_match for sl in dataset_subset.paths.slide]
+    mask = [sl in str(slides_to_match) for sl in dataset_subset.paths.slide]
     dataset_subset.paths = dataset_subset.paths[mask]
+
 
     return dataset_subset
 
+
+def split_cervical_tags(index: SlidesIndex):
+
+    train_mask = [idx for idx, tag in enumerate(index.dataset.paths.tags) if tag.split(';')[1] == 'train']
+    valid_mask = [idx for idx, tag in enumerate(index.dataset.paths.tags) if tag.split(';')[1] == 'valid'] 
+
+    train_index = [index[idx] for idx in train_mask]
+    valid_index = [index[idx] for idx in valid_mask]
+
+    return SlidesIndex(index.dataset, train_index), SlidesIndex(index.dataset, valid_index)
 
 
 def split_endometrial(index: SlidesIndex, train_percent: float) -> Tuple[SlidesIndex, SlidesIndex]:

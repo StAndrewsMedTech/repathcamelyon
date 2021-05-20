@@ -9,7 +9,7 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc, accuracy_sco
 from repath.preprocess.patching import CombinedIndex
 from repath.postprocess.results import SlidesIndexResults
 from repath.utils.convert import remove_item_from_dict
-from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve, save_conf_mat_plot, save_conf_mat_plot_ci, binary_curves
+from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, pre_re_curve, save_conf_mat_plot, save_conf_mat_plot_ci, binary_curves, conf_mat_plot_heatmap
 
 
 def calc_patch_level_metrics(patches_df: pd.DataFrame, poslabel: int = 2, posname: str = 'tumor', optimal_threshold: float = 0.5) -> pd.DataFrame:
@@ -47,6 +47,7 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
     # remove background from dict and get number that corresponds to poslabel
     # assumes all label dicts are same for multiple datasets so just uses the first one in list
     class_labels = remove_item_from_dict(all_patches.datasets[0].labels, 'background')
+    print(class_labels)
     poslabel = class_labels[posname]
 
     # get one number summaries
@@ -144,3 +145,44 @@ def patch_level_metrics(slide_results: List[SlidesIndexResults], save_dir: Path,
 
     # write out patch summary result dataframe
     patch_results_out.to_csv(save_dir / 'patch_results.csv')
+
+
+def patch_level_metrics_multi(slide_results: List[SlidesIndexResults], save_dir: Path, data_title: str) -> pd.DataFrame:
+    # check save directory exists if not make it
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # combine into one set of patches
+    all_patches = CombinedIndex.for_slide_indexes(slide_results) 
+    
+    # remove background from dict and get number that corresponds to poslabel
+    # assumes all label dicts are same for multiple datasets so just uses the first one in list
+    class_labels = remove_item_from_dict(all_patches.datasets[0].labels, 'background')
+
+    predicted_probabilities = all_patches.patches_df.loc[:, list(class_labels.keys())]
+    predicted_class = predicted_probabilities.idxmax(axis=1)
+    predicted_label = predicted_class.replace(class_labels)
+
+    cm = conf_mat_raw(all_patches.patches_df.label.to_numpy(), predicted_label.to_numpy(), labels=class_labels.values())
+    cm_out = cm.ravel()
+
+    col_heads = []
+    accuracy = 0
+    for idt, tt in enumerate(class_labels.keys()):
+        for idp, pp in enumerate(class_labels.keys()):
+            gen_label = 'true_' + tt + '_pred_' + pp
+            col_heads.append(gen_label)
+            if pp == tt:
+                accuracy = accuracy + cm[idt, idp]
+    accuracy = accuracy / np.sum(cm_out)
+
+    patch_results_out = pd.DataFrame(np.reshape(cm_out, (1, len(cm_out))), columns=col_heads, index=['results'])
+    patch_results_out['accuracy'] = [accuracy]
+
+    cm_img = conf_mat_plot_heatmap(cm, class_labels.keys(), data_title)
+    out_path = 'confidence_matrix.png'
+    cm_img.get_figure().savefig(save_dir / out_path)
+
+
+    # write out patch summary result dataframe
+    patch_results_out.to_csv(save_dir / 'patch_results.csv')
+
