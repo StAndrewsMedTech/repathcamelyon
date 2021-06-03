@@ -53,8 +53,9 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
                 probabilities_reshape[:, cl] = class_probs
             probabilities = probabilities_reshape
         '''
-
-        probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
+        column_names = list(just_patch_classes.keys())
+        column_names.sort()
+        probs_df = pd.DataFrame(probs_out, columns=column_names)
         probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
         dataset.close_slide()
         results = SlidePatchSetResults(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df, border, jitter)

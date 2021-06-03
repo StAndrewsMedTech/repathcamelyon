@@ -63,6 +63,10 @@ def training():
 
     slide_paths = sorted(slide_paths)
     annot_paths = sorted(annot_paths)
+
+    # for debug
+    slide_paths = slide_paths[0:19]
+    annot_paths = annot_paths[0:19]
    
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()

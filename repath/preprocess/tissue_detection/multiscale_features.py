@@ -142,6 +142,13 @@ def multiscale_basic_features(
     features : np.ndarray
         Array of shape ``image.shape + (n_features,)``
     """
+    
+    # create tissue mask
+    rr = image[:, :, 0] == 255
+    gg = image[:, :, 0] == 255
+    bb = image[:, :, 0] == 255
+    mask = np.logical_not(np.logical_and(np.logical_and(rr, gg), bb))
+
     if not any([intensity, edges, texture]):
         raise ValueError(
                 "At least one of ``intensity``, ``edges`` or ``textures``"
@@ -165,4 +172,80 @@ def multiscale_basic_features(
         for dim in range(image.shape[-1])
     )
     features = list(itertools.chain.from_iterable(all_results))
-    return np.stack(features, axis=-1)
+    out = np.stack(features, axis=-1)
+    out = out[mask]
+    return out
+
+
+def multiscale_basic_features_all(
+    image,
+    multichannel=False,
+    intensity=True,
+    edges=True,
+    texture=True,
+    sigma_min=0.5,
+    sigma_max=16,
+    num_sigma=None,
+    num_workers=None,
+):
+    """Local features for a single- or multi-channel nd image.
+    Intensity, gradient intensity and local structure are computed at
+    different scales thanks to Gaussian blurring.
+    Parameters
+    ----------
+    image : ndarray
+        Input image, which can be grayscale or multichannel.
+    multichannel : bool, default False
+        True if the last dimension corresponds to color channels.
+    intensity : bool, default True
+        If True, pixel intensities averaged over the different scales
+        are added to the feature set.
+    edges : bool, default True
+        If True, intensities of local gradients averaged over the different
+        scales are added to the feature set.
+    texture : bool, default True
+        If True, eigenvalues of the Hessian matrix after Gaussian blurring
+        at different scales are added to the feature set.
+    sigma_min : float, optional
+        Smallest value of the Gaussian kernel used to average local
+        neighbourhoods before extracting features.
+    sigma_max : float, optional
+        Largest value of the Gaussian kernel used to average local
+        neighbourhoods before extracting features.
+    num_sigma : int, optional
+        Number of values of the Gaussian kernel between sigma_min and sigma_max.
+        If None, sigma_min multiplied by powers of 2 are used.
+    num_workers : int or None, optional
+        The number of parallel threads to use. If set to ``None``, the full
+        set of available cores are used.
+    Returns
+    -------
+    features : np.ndarray
+        Array of shape ``image.shape + (n_features,)``
+    """
+    
+    if not any([intensity, edges, texture]):
+        raise ValueError(
+                "At least one of ``intensity``, ``edges`` or ``textures``"
+                "must be True for features to be computed."
+                )
+    if image.ndim < 3:
+        multichannel = False
+    if not multichannel:
+        image = image[..., np.newaxis]
+    all_results = (
+        _mutiscale_basic_features_singlechannel(
+            image[..., dim],
+            intensity=intensity,
+            edges=edges,
+            texture=texture,
+            sigma_min=sigma_min,
+            sigma_max=sigma_max,
+            num_sigma=num_sigma,
+            num_workers=num_workers,
+        )
+        for dim in range(image.shape[-1])
+    )
+    features = list(itertools.chain.from_iterable(all_results))
+    out = np.stack(features, axis=-1)
+    return out

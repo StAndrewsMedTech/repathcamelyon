@@ -10,7 +10,7 @@ from sklearn.utils.validation import check_is_fitted
 
 import repath.data.datasets.bloodmucus as bloodmucus
 from repath.data.slides.isyntax import Slide
-from repath.preprocess.tissue_detection.multiscale_features import multiscale_basic_features
+from repath.preprocess.tissue_detection.multiscale_features import multiscale_basic_features, multiscale_basic_features_all
 from repath.utils.metrics import conf_mat_plot_heatmap
 
 
@@ -71,11 +71,34 @@ def get_features(filtered_thumb, sigma_min = 1, sigma_max=16, edges=False):
     return features
 
 
+def get_features_all(filtered_thumb, sigma_min = 1, sigma_max=16, edges=False):
+    features_func = partial(multiscale_basic_features_all,
+                            intensity=True, edges=edges, texture=True,
+                            sigma_min=sigma_min, sigma_max=sigma_max,
+                            multichannel=True)
+    features = features_func(filtered_thumb)
+    return features
+
+
 def get_features_list(filtered_thumbz, sigma_min = 1, sigma_max=16, edges=False):
 
     featz = []
-    for tt in filtered_thumbz:
+    for idx, tt in enumerate(filtered_thumbz):
+        print(idx)
         features = get_features(tt, sigma_min, sigma_max, edges)
+        features = np.array(features, dtype=np.float32)
+        featz.append(features)
+
+    return featz
+
+
+def get_features_list_all(filtered_thumbz, sigma_min = 1, sigma_max=16, edges=False):
+
+    featz = []
+    for idx, tt in enumerate(filtered_thumbz):
+        print(idx)
+        features = get_features_all(tt, sigma_min, sigma_max, edges)
+        features = np.array(features, dtype=np.float32)
         featz.append(features)
 
     return featz
@@ -103,20 +126,21 @@ def fit_segmenter_multi(labels_list, features_list, clf):
     ------
     NotFittedError if ``self.clf`` has not been fitted yet (use ``self.fit``).
     """
-    training_data_all = []
-    training_labels_all = []
-    for idx, labels in enumerate(labels_list):
-        mask = labels > 0
-        training_data = features_list[idx][mask]
-        if idx == 0:
-            training_data_all = training_data
-        else:
-            training_data_all = np.vstack((training_data_all, training_data))
-        training_labels = labels[mask].ravel()
-        training_labels_all = np.hstack((training_labels_all, training_labels))
-    print(training_data_all.shape, training_labels_all.shape)
+    training_data_all = np.concatenate(features_list, axis=0)
+    training_labels_all = np.concatenate(labels_list, axis=0)
+    #for idx, labels in enumerate(labels_list):
+        # mask = labels > 0
+        # training_data = features_list[idx][mask]
+        #training_data = features_list[idx]
+        #if idx == 0:
+        #    training_data_all = training_data
+        #else:
+        #    training_data_all = np.vstack((training_data_all, training_data))
+        # training_labels = labels[mask].ravel()
+        #training_labels_all = np.hstack((training_labels_all, labels))
+    print(training_data_all.dtype, training_labels_all.dtype)
     clf.fit(training_data_all, training_labels_all)
-    print(clf, check_is_fitted(clf))
+    print(clf)
     return clf
 
 
@@ -252,3 +276,19 @@ def save_confusion_mat(cm, save_dir, exp_name):
         cm_np = np.array(cm_np,dtype=np.uint)
         cm_out = conf_mat_plot_heatmap(cm_np, display_labels, title_cm)
         cm_out.get_figure().savefig(save_dir / 'confusion_matrix_3class.png')
+
+
+def flatten_mask_annots(annots, image):
+    rr = image[:, :, 0] == 255
+    gg = image[:, :, 0] == 255
+    bb = image[:, :, 0] == 255
+    mask = np.logical_not(np.logical_and(np.logical_and(rr, gg), bb))
+    annots = annots[mask]
+    return annots
+
+def flatten_mask_annots_list(annotz, thumbz):
+    annots_out = []
+    for img, ann in zip(thumbz, annotz):
+        annot = flatten_mask_annots(ann, img)
+        annots_out.append(annot)
+    return annots_out

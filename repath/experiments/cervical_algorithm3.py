@@ -26,7 +26,7 @@ from repath.postprocess.patch_level_results import patch_level_metrics_multi
 """
 Global stuff
 """
-experiment_name = "cervical1"
+experiment_name = "cervical_256"
 experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorGreyScale()
 
@@ -92,7 +92,7 @@ def preprocess_indexes() -> None:
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     train_data = cervical.debug()
-    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=128, stride=128, border=128)
     train_patches = SlidesIndex.index_dataset(train_data, tissue_detector, patch_finder)
     
     train, valid = split_cervical_tags(train_patches)
@@ -111,8 +111,8 @@ def preprocess_samples() -> None:
     valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
 
     # sample from train and valid sets
-    train_samples = balanced_sample([train], 100000)
-    valid_samples = balanced_sample([valid], 50000)
+    train_samples = balanced_sample([train], 50000, floor_samples=25000)
+    valid_samples = balanced_sample([valid], 25000, floor_samples=10000)
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
@@ -172,7 +172,7 @@ def inference_on_valid_pre() -> None:
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir = experiment_root / "patch_results" / "valid"
+    output_dir = experiment_root / "patch256_results" / "valid"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
@@ -194,12 +194,12 @@ def calculate_patch_level_results() -> None:
 
     set_seed(global_seed)
 
-    dirin = experiment_root / 'patch_results' / 'valid'
-    dirout = experiment_root / 'patch_results' / "patch_summaries" / 'valid'
+    dirin = experiment_root / 'patch256_results' / 'valid'
+    dirout = experiment_root / 'patch256_results' / "patch_summaries" / 'valid'
 
     val_results = SlidesIndexResults.load(cervical.debug(), dirin, "results", "heatmaps")
 
-    title = experiment_name + ' experiment ' + 'patch128' + ' model Cervical ' + 'valid' + ' dataset'
+    title = experiment_name + ' experiment ' + 'patch256' + ' model Cervical ' + 'valid' + ' dataset'
 
     patch_level_metrics_multi([val_results], dirout, title)
 
