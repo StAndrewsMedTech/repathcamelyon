@@ -10,26 +10,31 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
-from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize
+from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation, Normalize, ColorJitter
 from torchvision.models import inception_v3
 
-from repath.utils.paths import project_root
+
 from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.camelyon16 as camelyon16
-from repath.preprocess.tissue_detection import TissueDetectorOTSU
+from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
-from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random
+from repath.preprocess.sampling import split_camelyon16, balanced_sample, weighted_random, get_subset_of_dataset
 from repath.preprocess.augmentation.augments import Rotate, FlipRotate
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.results import SlidesIndexResults
+from repath.postprocess.slide_level_metrics import SlideClassifierLiu
+from repath.utils.convert import average_patches
+from repath.utils.paths import project_root
 from repath.utils.seeds import set_seed
+from repath.postprocess.find_lesions import LesionFinderLiu
+
 
 """
 Global stuff
 """
 experiment_name = "liu"
 experiment_root = project_root() / "experiments" / experiment_name
-tissue_detector = TissueDetectorOTSU()
+tissue_detector = TissueDetectorGreyScale()
 patch_border = 171
 patch_jitter = 8
 
@@ -122,6 +127,9 @@ def preprocess_samples() -> None:
     train_samples = balanced_sample([train], 5000000, sampling_policy=weighted_random)
     valid_samples = balanced_sample([valid], 1250000, sampling_policy=weighted_random)
 
+    train_samples.save(experiment_root / "train_samples")
+    valid_samples.save(experiment_root / "valid_samples")
+
     # create list of augmentations 
     augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
                      FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
@@ -136,6 +144,7 @@ def train_patch_classifier() -> None:
     # transforms
     transform = Compose([
         RandomCrop((299, 299)),
+        ColorJitter(brightness=0.25, contrast=0.75, saturation=0.25, hue=0.04),
         ToTensor(),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -176,6 +185,53 @@ def train_patch_classifier() -> None:
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
+def restart_patch_classifier() -> None:
+    set_seed(global_seed)
+    # transforms
+    transform = Compose([
+        RandomCrop((299, 299)),
+        ColorJitter(brightness=0.25, contrast=0.75, saturation=0.25, hue=0.04),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # prepare our data
+    batch_size = 32
+    train_set = ImageFolder(experiment_root / "training_patches", transform=transform)
+    valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
+    
+    # create dataloaders
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+
+    # configure logging and checkpoints
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_accuracy",
+        dirpath=experiment_root / "patch_model",
+        filename=f"checkpoint_restart",
+        save_top_k=1,
+        mode="max",
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='val_accuracy',
+        min_delta=0.00,
+        patience=5,
+        verbose=False,
+        mode='max'
+    )
+
+    # create a logger
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=1)
+
+    # train our model
+    cp_path = experiment_root / "patch_model"/ "checkpoint.ckpt.ckpt"
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, log_every_n_steps=1)
+    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
 def preprocess_valid_inference():
     set_seed(global_seed)
     # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
@@ -203,7 +259,7 @@ def preprocess_valid_inference():
 def inference_on_valid16() -> None:
     set_seed(global_seed)
     # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
     output_dir16 = experiment_root / "inference_results" / "valid16"
@@ -245,7 +301,8 @@ def preprocess_testindex() -> None:
     set_seed(global_seed)
     # index all the patches for the camelyon16 dataset
     test_data = camelyon16.testing()
-    apply_transforms = LiuTransform(label=2, num_transforms=8)
+    # apply transforms for all 
+    apply_transforms = MultiTransform(num_transforms=8)
     patch_finder = GridPatchFinder(labels_level=6, patch_level=0, patch_size=128, stride=128, 
                                    border=patch_border, jitter=patch_jitter, 
                                    apply_transforms=apply_transforms)
@@ -257,15 +314,15 @@ def preprocess_testindex() -> None:
 def inference_on_test16() -> None:
     set_seed(global_seed)
     # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v1.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "post_hnm_results" / "test16"
+    output_dir16 = experiment_root / "inference_results" / "test16"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "test_index")
+    test = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index")
 
     transform = Compose([
         RandomCrop((299, 299)),
@@ -277,34 +334,151 @@ def inference_on_test16() -> None:
     augmentations = [Rotate(angle=0), Rotate(angle=90), Rotate(angle=180), Rotate(angle=270),
                      FlipRotate(angle=0), FlipRotate(angle=90), FlipRotate(angle=180), FlipRotate(angle=270)]
 
-    valid_results16 = SlidesIndexResults.predict(valid, classifier, transform, 128, output_dir16,
+    test_results16 = SlidesIndexResults.predict(test, classifier, transform, 128, output_dir16,
                                                  results_dir_name, heatmap_dir_name, augments=augmentations, nthreads=2)
-    valid_results16.save()
+    test_results16.save()
 
 
-def calculate_patch_level_results_valid_16() -> None:
-    def patch_dataset_function(modelname: str, splitname: str, dataset: Dataset, ci_yn: bool):
-        # define strings for model and split
-        splitname16 = splitname + '16'
-        results_out_name = "patch_summaries"
-        results_in_name = "results"
-        heatmap_in_name = "heatmaps"
+def average_augments_valid() -> None:
+    """
+    Output from inference contains the values for all 8 augments of each patch
+    Need to average them to get the final results for postprocessing
+    """
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+    dirin = experiment_root / "inference_results" / 'valid16' 
+    dirout = experiment_root / "inference_results" / 'valid16mean' 
 
-        # set paths for model and split
-        model_dir = experiment_root / modelname
-        splitdirin = model_dir / splitname16
-        splitdirout = model_dir / splitname16 / results_out_name
+    # need a cutdown validation dataset for this experiment
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
+    valid16 = SlidesIndexResults.load(cam16_valid, dirin, results_in_name, heatmap_in_name)
+    for ps in valid16:
+        print(ps.slide_path)
+    mean_valid16 = average_patches(valid16, 8, dirout)
+    mean_valid16.save(writeps=True)
 
-        # read in predictions
-        split_results = SlidesIndexResults.load(dataset, splitdirin, results_in_name, heatmap_in_name)
-        print(splitdirin)
-        print(len(split_results))
 
-        # calculate patch level results
-        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
-        patch_level_metrics([split_results], splitdirout, title16, ci=ci_yn)
+def average_augments_test() -> None:
+    """
+    Output from inference contains the values for all 8 augments of each patch
+    Need to average them to get the final results for postprocessing
+    """
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+    dirin = experiment_root / "inference_results" / 'test16' 
+    dirout = experiment_root / "inference_results" / 'test16mean' 
+
+    # need a cutdown validation dataset for this experiment
+    test16 = SlidesIndexResults.load(camelyon16.testing(), dirin, results_in_name, heatmap_in_name)
+    for ps in test16:
+        print(ps.slide_path)
+    mean_test16 = average_patches(test16, 8, dirout)
+    mean_test16.save(writeps=True)
+
+
+def calculate_patch_level_results_valid_16() -> None:     
 
     set_seed(global_seed)
 
-    patch_dataset_function("post_hnm_results", "valid", camelyon16.training(), ci_yn=True)
+    # need a cutdown validation dataset for this experiment
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
 
+    # define strings for model and split
+    results_out_name = "patch_summaries"
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+
+    # set paths for model and split
+    model_dir = experiment_root / "inference_results"
+    dirin = model_dir / 'valid16mean'
+    dirout = dirin / results_out_name
+
+    # read in predictions
+    split_results = SlidesIndexResults.load(cam16_valid, dirin, results_in_name, heatmap_in_name)
+
+    # calculate patch level results
+    title16 = experiment_name + ' experiment Camelyon 16 valid dataset'
+    patch_level_metrics([split_results], dirout, title16, ci=False, optimal_threshold=0.9)
+
+
+def calculate_patch_level_results_test_16() -> None:     
+
+    set_seed(global_seed)
+
+    # define strings for model and split
+    results_out_name = "patch_summaries"
+    results_in_name = "results"
+    heatmap_in_name = "heatmaps"
+
+    # set paths for model and split
+    model_dir = experiment_root / "inference_results"
+    dirin = model_dir / 'test16mean'
+    dirout = dirin / results_out_name
+
+    # read in predictions
+    split_results = SlidesIndexResults.load(camelyon16.testing(), dirin, results_in_name, heatmap_in_name)
+
+    # calculate patch level results
+    title16 = experiment_name + ' experiment Camelyon 16 test dataset'
+    patch_level_metrics([split_results], dirout, title16, ci=False, optimal_threshold=0.9)
+
+
+def calculate_slide_level_results() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    validresultsin_post = experiment_root / "inference_results" / "valid16mean" 
+    testresultsin_post = experiment_root / "inference_results" / "test16mean" 
+
+    validresults_out_post = experiment_root / "inference_results" / "slide_results16_valid"
+    testresults_out_post = experiment_root / "inference_results" / "slide_results16_test"
+
+    title_postv = experiment_name + " experiment, Camelyon 16 valid dataset"
+    title_postt = experiment_name + " experiment, Camelyon 16 test dataset"
+
+    #camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    #camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), testresultsin_post, results_dir_name, heatmap_dir_name)
+
+    slide_classifier = SlideClassifierLiu(camelyon16.training().slide_labels)
+    slide_classifier.calc_features(valid_results_post, validresults_out_post)
+    slide_classifier.calc_features(test_results_post, testresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_post)
+    slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
+    slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)
+
+
+def calculate_lesion_level_results() -> None:
+    set_seed(global_seed)
+
+    resultsin_post_v = experiment_root / "inference_results" / "valid16mean"
+    resultsin_post_t = experiment_root / "inference_results" / "test16mean"
+
+    results_out_post_v = experiment_root / "inference_results" / "lesion_results" / "valid16"
+    results_out_post_t = experiment_root / "inference_results" / "lesion_results" / "test16"
+
+    mask_dir_v = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'training'
+    mask_dir_t = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'testing'
+
+    title_post_v = experiment_name + " experiment, Camelyon 16 valid dataset"
+    title_post_t = experiment_name + " experiment, Camelyon 16 test dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, resultsin_post_v, "results", "heatmaps")
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), resultsin_post_t, "results", "heatmaps")
+
+    lesion_finder_v_post = LesionFinderLiu(mask_dir_v, results_out_post_v)
+    lesion_finder_v_post.calc_lesions(valid_results_post)
+    lesion_finder_v_post.calc_lesion_results(title_post_v)
+    lesion_finder_t_post = LesionFinderLiu(mask_dir_t, results_out_post_t)
+    lesion_finder_t_post.calc_lesions(test_results_post)
+    lesion_finder_t_post.calc_lesion_results(title_post_t)

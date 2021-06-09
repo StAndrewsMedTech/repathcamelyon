@@ -111,8 +111,9 @@ def calculate_kappa(reference, submission):
     return cohen_kappa_score(y1=reference_stage_list, y2=submission_stage_list, labels=stage_list, weights='quadratic')
 
 
-def calc_patient_level_metrics(input_dir: Path, title: str, ci=True, nreps=1000) -> None:
+def calc_patient_level_metrics(input_dir: Path, output_dir: Path, title: str, ci=True, nreps=1000) -> None:
     input_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     slide_results = pd.read_csv(input_dir / 'slide_results.csv')
 
     unique_patients = compute_patient_level_scores(slide_results)
@@ -137,7 +138,7 @@ def calc_patient_level_metrics(input_dir: Path, title: str, ci=True, nreps=1000)
      # create confidence matrix plot and write out
     title_cm = "Patient Classification Confusion Matrix for \n" + title
     title_plus_kappa = title_cm + "\n kappa = " + str(round(kappa, 2))
-    save_conf_mat_plot(patient_metrics_out.iloc[:, 1:], patient_labels, title_plus_kappa, input_dir)
+    save_conf_mat_plot(patient_metrics_out.iloc[:, 1:], patient_labels, title_plus_kappa, output_dir)
 
     kappa_samples = []
     if ci:
@@ -159,9 +160,9 @@ def calc_patient_level_metrics(input_dir: Path, title: str, ci=True, nreps=1000)
 
         title_with_ci = title_cm + "\n kappa = " + str(round(kappa, 2)) + ", (" + str(round(patient_metrics_ci.iloc[0, 0], 2)) + ", " + str(round(patient_metrics_ci.iloc[0, 0], 2)) + ")" 
         # create confidence matrix plot with confidence interval and write out
-        save_conf_mat_plot_ci(patient_metrics_out.iloc[:, 1:], patient_labels, title_with_ci, input_dir)
+        save_conf_mat_plot_ci(patient_metrics_out.iloc[:, 1:], patient_labels, title_with_ci, output_dir)
 
-    patient_metrics_out.to_csv(input_dir / 'patient_metrics.csv')
+    patient_metrics_out.to_csv(output_dir / 'patient_metrics.csv')
 
 
 

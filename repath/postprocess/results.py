@@ -24,9 +24,9 @@ from torchvision.transforms import Compose
 import os
 
 
-def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int, int, int, Path, str, str, List]) -> 'SlidePatchSetResults':
+def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int, int, int, Path, str, str, List, List]) -> 'SlidePatchSetResults':
     
-    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name, augments = args
+    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name, augments, heatmapclasses = args
     device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
     results_all = []
     for sps in si:
@@ -53,13 +53,15 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
                 probabilities_reshape[:, cl] = class_probs
             probabilities = probabilities_reshape
         '''
-
-        probs_df = pd.DataFrame(probs_out, columns=list(just_patch_classes.keys()))
+        column_names = list(just_patch_classes.keys())
+        column_names.sort()
+        probs_df = pd.DataFrame(probs_out, columns=column_names)
         probs_df = pd.concat((sps.patches_df, probs_df), axis=1)
         dataset.close_slide()
         results = SlidePatchSetResults(sps.slide_idx, sps.dataset, sps.patch_size, sps.level, probs_df, border, jitter)
         results.save_csv(output_dir / results_dir_name )
-        results.save_heatmap('tumor', output_dir / heatmap_dir_name)
+        for hc in heatmapclasses:
+            results.save_heatmap(hc, output_dir / heatmap_dir_name)
         results_all.append(results)
     return results_all
    
@@ -114,7 +116,8 @@ class SlidePatchSetResults(SlidePatchSet):
         # get the heatmap filename for this slide
         file_path = output_dir / self.slide_path.parents[0]
         file_path.mkdir(parents=True, exist_ok=True)
-        img_path = output_dir / self.slide_path.with_suffix('.png')
+
+        img_path = output_dir / str(self.slide_path.stem + '_' + class_name + '.png')
         # create heatmap and write out
         heatmap = self.to_heatmap(class_name)
         heatmap_out = np.array(np.multiply(heatmap, 255), dtype=np.uint8)
@@ -129,7 +132,7 @@ class SlidesIndexResults(SlidesIndex):
         self.results_dir_name = results_dir_name
         self.heatmap_dir_name = heatmap_dir_name
 
-    def save(self):
+    def save(self, writeps=False):
         columns = ['slide_idx', 'csv_path', 'png_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
         for ps in self.patches:
@@ -137,6 +140,8 @@ class SlidesIndexResults(SlidesIndex):
             csv_path = self.output_dir / self.results_dir_name / ps.slide_path.with_suffix('.csv')
             png_path = self.output_dir / self.heatmap_dir_name / ps.slide_path.with_suffix('.png')
 
+            if writeps:
+                ps.save_csv(self.output_dir / self.results_dir_name)
             # append information about slide to index
             info = np.array([ps.slide_idx, csv_path, png_path, ps.level, ps.patch_size])
             info = np.reshape(info, (1, 5))
@@ -156,13 +161,14 @@ class SlidesIndexResults(SlidesIndex):
                                  int(r.level), patches_df, border, jitter)
 
         index = pd.read_csv(input_dir / 'results_index.csv')
+        print("load rows")
         patches = [patchset_from_row(r) for r in index.itertuples()]
         rtn = cls(dataset, patches, input_dir, results_dir_name, heatmap_dir_name)
         return rtn
 
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
-                border=0, jitter=0, augments=None, nthreads=None) -> 'SlidesIndexResults':
+                border=0, jitter=0, augments=None, nthreads=None, heatmap_classes=['tumor']) -> 'SlidesIndexResults':
         
         ### temp for debugging
 
@@ -186,19 +192,22 @@ class SlidesIndexResults(SlidesIndex):
         
         not_processed = SlidesIndex(slide_index.dataset, not_processed)
         
+        # create empty lists 
         if nthreads == None:
             nthreads = torch.cuda.device_count()
-
         gpu_lists = [ [] for _ in range(nthreads) ]
+
+        # split slides to list
         while len(not_processed) > 0:
             for n in range(nthreads):
                 if len(not_processed) > 0:
                     gpu_lists[n].append(not_processed.patches.pop())
         not_processed.patches = gpu_lists 
+
         # spawn a process to predict for each slide
         slides = zip(not_processed, range(nthreads), [transform]*nthreads, [model]*nthreads, [batch_size]*nthreads, 
             [border] *nthreads, [jitter] * nthreads, [output_dir] *nthreads, [results_dir_name]*nthreads, 
-            [heatmap_dir_name]*nthreads, [augments]*nthreads)
+            [heatmap_dir_name]*nthreads, [augments]*nthreads, [heatmap_classes]*nthreads)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()

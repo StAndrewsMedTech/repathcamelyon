@@ -81,8 +81,8 @@ class GridPatchFinder(PatchFinder):
 
         # convert the 2d array of patch labels to a data frame
         df = to_frame_with_locations(patch_labels, "label")
-        df.row *= self.patch_size
-        df.column *= self.patch_size
+        df.row *= self.stride
+        df.column *= self.stride
         df = df.rename(columns={"row": "y", "column": "x"})
         df = df.reindex(columns=["x", "y", "label"])
 

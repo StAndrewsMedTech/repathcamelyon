@@ -13,6 +13,10 @@ def simple_random(class_df: pd.DataFrame, sum_totals: int) -> pd.DataFrame:
     class_sample = class_df.sample(n=sum_totals, axis=0, replace=False)
     return class_sample
 
+def simple_random_replacement(class_df: pd.DataFrame, sum_totals: int) -> pd.DataFrame:
+    class_sample = class_df.sample(n=sum_totals, axis=0, replace=True)
+    return class_sample
+
 
 def weighted_random(class_df: pd.DataFrame, sum_totals: int) -> pd.DataFrame:
     class_df = class_df.assign(freq=class_df.groupby('slide_idx')['slide_idx'].transform('count').tolist())
@@ -29,7 +33,7 @@ def balanced_sample(indexes: List[SlidesIndex], num_samples: int, floor_samples:
     # work out how many of each type of patches you have in the index
     labels = np.unique(index.patches_df.label)
     sum_totals = [np.sum(index.patches_df.label == label) for label in labels]
-
+    print(sum_totals)
     # find the count for the class that has the lowest count, so we have balanced classes
     n_patches = min(sum_totals)
 

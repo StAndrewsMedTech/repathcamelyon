@@ -7,6 +7,11 @@ import repath.experiments.wang as wang
 import repath.experiments.lee as lee
 import repath.experiments.liu as liu
 import repath.experiments.tissuedet as tissue
+import repath.experiments.cervical_algorithm1 as cervical1
+import repath.experiments.cervical_algorithm2 as cervical2
+import repath.experiments.cervical_algorithm3 as cervical3
+import repath.experiments.cervical_algorithm4 as cervical4
+import repath.experiments.bloodmuc_lev4_rf as bm_lev4
 
 @group()
 @version_option("1.0.0")

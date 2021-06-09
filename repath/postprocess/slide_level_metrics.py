@@ -16,8 +16,7 @@ from repath.utils.metrics import conf_mat_raw, plotROC, plotROCCI, fpr_tpr_curve
 
 
 class SlideClassifier(ABC):
-    def __init__(self, output_dir: Path, slide_labels: Dict) -> None:
-        self.output_dir = output_dir
+    def __init__(self, slide_labels: Dict) -> None:
         self.slide_labels = slide_labels
 
     @abstractmethod
@@ -28,9 +27,11 @@ class SlideClassifier(ABC):
     def predict_slide_level(self) -> None:
         pass
 
-    def calc_features(self, results: SlidesIndexResults) -> pd.DataFrame:
+    def calc_features(self, results: SlidesIndexResults, output_dir: Path) -> pd.DataFrame:
         
         features_all_slides = []
+
+        print(results[0])
 
         for result in results:
             features_out = self.calculate_slide_features(result)
@@ -41,13 +42,13 @@ class SlideClassifier(ABC):
         features_all_slides = pd.concat(features_all_slides)
 
         # write out lesions
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        features_all_slides.to_csv(self.output_dir / 'features.csv', index=False)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        features_all_slides.to_csv(output_dir / 'features.csv', index=False)
   
 
-    def calc_slide_metrics_binary(self, title, ci=True, nreps=1000, posname='tumor'):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        slide_results = pd.read_csv(self.output_dir / 'slide_results.csv')
+    def calc_slide_metrics_binary(self, title, output_dir, ci=True, nreps=1000, posname='tumor'):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        slide_results = pd.read_csv(output_dir / 'slide_results.csv')
 
         # Accuracy - number of matching labels / total number of slides
         slide_accuracy = np.sum(slide_results.true_label == slide_results.predictions) / slide_results.shape[0]
@@ -63,33 +64,33 @@ class SlideClassifier(ABC):
         pos_probs = [float(prob) for prob in slide_results[posname].tolist()]
         precision, tpr, fpr, roc_thresholds = binary_curves(slide_results.true_label.to_numpy(),
                                                             np.array(pos_probs), pos_label=posname)
-        auc_out = auc(tpr, fpr)
+        auc_out = auc(fpr, tpr)
 
         # write out precision recall curve - without CI csv and png
         slide_curve = pd.DataFrame(list(zip(fpr, tpr, roc_thresholds)), 
                                    columns=['fpr', 'tpr', 'thresholds'])
-        slide_curve.to_csv(self.output_dir / 'slide_pr_curve.csv', index=False)
-        title_pr = "Slide Classification Precision-Recall Curve for \n" + title
-        pr_curve_plt = plotROC(tpr, fpr, auc_out, title_pr, "True Positive Rate", "False Positive Rate")
-        pr_curve_plt.savefig(self.output_dir / 'slide_pr_curve.png')
+        slide_curve.to_csv(output_dir / 'slide_pr_curve.csv', index=False)
+        title_pr = "Slide Classification ROC Curve for \n" + title
+        pr_curve_plt = plotROC(fpr, tpr, auc_out, title_pr, "False Positive Rate", "True Positive Rate")
+        pr_curve_plt.savefig(output_dir / 'slide_pr_curve.png')
 
         # combine single figure results into dataframe
         slide_metrics_out = [slide_accuracy] + conf_mat + [auc_out]
         slide_metrics_out = np.reshape(slide_metrics_out, (1, 6))
-        slide_metrics_out = pd.DataFrame(slide_metrics_out, columns=['accuray', 'tn', 'fp', 'fn', 'tp', 'auc'])
+        slide_metrics_out = pd.DataFrame(slide_metrics_out, columns=['accuracy', 'tn', 'fp', 'fn', 'tp', 'auc'])
         slide_metrics_out.index = ['results']
 
         # create confidence matrix plot and write out
-        title_cm = "Slide Classification Confusion Matrix for \n" + title
-        save_conf_mat_plot(slide_metrics_out[['tn', 'fp', 'fn', 'tp']], self.slide_labels.keys(), title_cm, self.output_dir)
+        title_cm = "Slide Classification Confusion Matrix for \n" + title +"\n accuracy = " + str(round(slide_accuracy, 4))
+        save_conf_mat_plot(slide_metrics_out[['tn', 'fp', 'fn', 'tp']], self.slide_labels.keys(), title_cm, output_dir)
 
         if ci:
             slide_accuracy1000 = np.empty((nreps, 1))
             conf_mat1000 = np.empty((nreps, 4))
             auc_out1000 = np.empty((nreps, 1))
             nrecall_levs = 101
-            tpr_levels = np.linspace(0.0, 1.0, nrecall_levs)
-            fpr1000 = np.empty((nreps, nrecall_levs))
+            fpr_levels = np.linspace(0.0, 1.0, nrecall_levs)
+            tpr1000 = np.empty((nreps, nrecall_levs))
             for rep in range(nreps):
                 sample_slide_results = slide_results.sample(frac=1.0, replace=True)
                 slide_accuracy = np.sum(sample_slide_results.true_label == sample_slide_results.predictions) / \
@@ -101,39 +102,43 @@ class SlideClassifier(ABC):
                 conf_mat1000[rep, :] = conf_mat
 
                 #pos_probs = [float(prob) for prob in sample_slide_results[posname].tolist()]
-                fpr_lev = fpr_tpr_curve(sample_slide_results.true_label.to_numpy(), sample_slide_results[posname].to_numpy(),
-                                                        pos_label=posname, recall_levels=tpr_levels)
-                auc_samp = auc(tpr_levels[1:], fpr_lev[1:])
+                tpr_lev = fpr_tpr_curve(sample_slide_results.true_label.to_numpy(), sample_slide_results[posname].to_numpy(),
+                                                        pos_label=posname, recall_levels=fpr_levels)
+                auc_samp = auc(fpr_levels[1:], tpr_lev[1:])
                 auc_out1000[rep, 0] = auc_samp
                 #tpr_lev = np.interp(fpr_levels, fpr, tpr)
-                fpr1000[rep, :] = fpr_lev
+                tpr1000[rep, :] = tpr_lev
             
             # combine single figure metrics to dataframe
             samples_df = pd.DataFrame(np.hstack((slide_accuracy1000, conf_mat1000, auc_out1000)), 
-                                      columns=['accuray', 'tn', 'fp', 'fn', 'tp', 'auc'])
+                                      columns=['accuracy', 'tn', 'fp', 'fn', 'tp', 'auc'])
             samples_df.index = ['sample_' + str(x) for x in range(nreps)]
             slide_metrics_ci = samples_df.quantile([0.025, 0.975])
             slide_metrics_ci.index = ['ci_lower_bound', 'ci_upper_bound']
             slide_metrics_out = pd.concat((slide_metrics_out, slide_metrics_ci, samples_df), axis=0)
-
+            title_cm = title_cm + " (" + str(round(slide_metrics_ci.loc["ci_lower_bound", "accuracy"], 4)) 
+            title_cm = title_cm + ", " + str(round(slide_metrics_ci.loc["ci_upper_bound", "accuracy"], 4)) + ")"
             # create confidence matrix plot with confidence interval and write out
-            save_conf_mat_plot_ci(slide_metrics_out[['tn', 'fp', 'fn', 'tp']], self.slide_labels.keys(), title_cm, self.output_dir)
+            save_conf_mat_plot_ci(slide_metrics_out[['tn', 'fp', 'fn', 'tp']], self.slide_labels.keys(), title_cm, output_dir)
 
             # write out the curve information
-            fprCI = np.quantile(fpr1000, [0.025, 0.975], axis=0)
+            tprCI = np.quantile(tpr1000, [0.025, 0.975], axis=0)
             # fpr, tpr, roc_thresholds - slide level roc curve for c16
-            slide_curve = pd.DataFrame(np.hstack((fprCI.T, np.reshape(tpr_levels, (nrecall_levs, 1)))),
-                                       columns=['fpr_lower', 'fpr_upper', 'tpr'])
-            slide_curve.to_csv(self.output_dir / 'slide_pr_curve_ci.csv', index=False)
-            slide_curve_plt = plotROCCI(tpr, fpr, tpr_levels, fprCI, auc_out, slide_metrics_ci.auc.tolist(),
-                                        title_pr, "True Positive Rate", "False Positive Rate")
-            slide_curve_plt.savefig(self.output_dir / "slide_pr_curve_ci.png")
+            slide_curve = pd.DataFrame(np.hstack((tprCI.T, np.reshape(fpr_levels, (nrecall_levs, 1)))),
+                                       columns=['tpr_lower', 'tpr_upper', 'fpr'])
+            slide_curve.to_csv(output_dir / 'slide_pr_curve_ci.csv', index=False)
+            slide_curve_plt = plotROCCI(fpr, tpr, fpr_levels, tprCI, auc_out, slide_metrics_ci.auc.tolist(),
+                                        title_pr, "False Positive Rate", "True Positive Rate")
+            slide_curve_plt.savefig(output_dir / "slide_pr_curve_ci.png")
 
-        slide_metrics_out.to_csv(self.output_dir / 'slide_metrics.csv')
+        slide_metrics_out.to_csv(output_dir / 'slide_metrics.csv')
 
-    def calc_slide_metrics_multi(self, title, ci=True, nreps=1000):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        slide_results = pd.read_csv(self.output_dir / 'slide_results.csv')
+    def calc_slide_metrics_multi(self, title, output_dir, ci=True, nreps=1000, labelorder=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        slide_results = pd.read_csv(output_dir / 'slide_results.csv')
+
+        if labelorder == None:
+            labelorder = self.slide_labels.keys()
 
         # Accuracy - number of matching labels / total number of slides
         slide_accuracy = np.sum(slide_results.true_label == slide_results.predictions) / slide_results.shape[0]
@@ -142,7 +147,7 @@ class SlideClassifier(ABC):
         # confusion matrix for multi class
         conf_mat = conf_mat_raw(slide_results.true_label.to_numpy(),
                                     slide_results.predictions.to_numpy(),
-                                    labels=self.slide_labels.keys())
+                                    labels=labelorder)
         conf_mat = conf_mat.ravel().tolist()
         pred_tiled_labels = list(self.slide_labels.keys()) * len(self.slide_labels.keys())
         true_tiled_labels = [item for item in self.slide_labels.keys() for i in range(len(self.slide_labels.keys()))]
@@ -156,8 +161,8 @@ class SlideClassifier(ABC):
         slide_metrics_out.index = ['results']
 
         # create confidence matrix plot and write out
-        title_cm = "Slide Classification Confusion Matrix for \n" + title
-        save_conf_mat_plot(slide_metrics_out.iloc[:, 1:], self.slide_labels.keys(), title_cm, self.output_dir)
+        title_cm = "Slide Classification Confusion Matrix for \n" + title + "\n accuracy = " + str(round(slide_accuracy,4))
+        save_conf_mat_plot(slide_metrics_out.iloc[:, 1:], labelorder, title_cm, output_dir)
 
         if ci:
             slide_accuracy1000 = np.empty((nreps, 1))
@@ -168,7 +173,7 @@ class SlideClassifier(ABC):
                                 sample_slide_results.shape[0]
                 slide_accuracy1000[rep, 0] = slide_accuracy
                 conf_mat = conf_mat_raw(sample_slide_results.true_label.to_numpy(),
-                                            sample_slide_results.predictions.to_numpy(), labels=self.slide_labels.keys())
+                                            sample_slide_results.predictions.to_numpy(), labels=labelorder)
                 conf_mat = conf_mat.ravel().tolist()
                 conf_mat1000[rep, :] = conf_mat
 
@@ -179,17 +184,19 @@ class SlideClassifier(ABC):
             slide_metrics_ci = samples_df.quantile([0.025, 0.975])
             slide_metrics_ci.index = ['ci_lower_bound', 'ci_upper_bound']
             slide_metrics_out = pd.concat((slide_metrics_out, slide_metrics_ci, samples_df), axis=0)
+            title_cm = title_cm + " (" + str(round(slide_metrics_ci.loc["ci_lower_bound", "accuracy"], 4)) 
+            title_cm = title_cm + ", " + str(round(slide_metrics_ci.loc["ci_upper_bound", "accuracy"], 4)) + ")"
 
             # create confidence matrix plot with confidence interval and write out
-            save_conf_mat_plot_ci(slide_metrics_out.iloc[:, 1:], self.slide_labels.keys(), title_cm, self.output_dir)
+            save_conf_mat_plot_ci(slide_metrics_out.iloc[:, 1:], labelorder, title_cm, output_dir)
 
-        slide_metrics_out.to_csv(self.output_dir / 'slide_metrics.csv')
+        slide_metrics_out.to_csv(output_dir / 'slide_metrics.csv')
 
-    def calc_slide_metrics(self, title, ci=True, nreps=1000, posname='tumor'):
+    def calc_slide_metrics(self, title, output_dir, ci=True, nreps=1000, posname='tumor', labelorder=None):
         if len(self.slide_labels) == 2:
-            self.calc_slide_metrics_binary(title, ci=True, nreps=1000, posname='tumor')
+            self.calc_slide_metrics_binary(title, output_dir, ci=True, nreps=1000, posname='tumor')
         else:
-            self.calc_slide_metrics_multi(title, ci=True, nreps=1000)
+            self.calc_slide_metrics_multi(title, output_dir, ci=True, nreps=1000, labelorder=labelorder)
 
 
 class SlideClassifierWang(SlideClassifier):
@@ -338,14 +345,15 @@ class SlideClassifierWang(SlideClassifier):
         # convert to dataframe with column names
         features_df = pd.DataFrame(features_list, columns=out_cols)
         features_df['slidename'] = result.slide_path.stem
-        features_df['slide_label'] = result.label
+        features_df['slide_label'] = result.label.lower()
         features_df['tags'] = result.tags
 
         return features_df
 
-    def predict_slide_level(self, retrain=False):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        features = pd.read_csv(self.output_dir / 'features.csv')
+    def predict_slide_level(self, features_dir: Path, classifier_dir: Path, retrain=False):
+        classifier_dir.mkdir(parents=True, exist_ok=True)
+        features_dir.mkdir(parents=True, exist_ok=True)
+        features = pd.read_csv(features_dir / 'features.csv')
 
         just_features = features.drop(['slidename', 'slide_label', 'tags'], axis=1)
         labels = features['slide_label']
@@ -353,12 +361,12 @@ class SlideClassifierWang(SlideClassifier):
         tags = features['tags']
 
         # fit or load (NB not all experiments will fit a sepearate model so fitting bundled in with predict)
-        if Path(self.output_dir, 'slide_model.joblib').is_file() and not retrain:
-            slide_model = load(self.output_dir / 'slide_model.joblib')
+        if Path(classifier_dir, 'slide_model.joblib').is_file() and not retrain:
+            slide_model = load(classifier_dir / 'slide_model.joblib')
         else:
             slide_model = RandomForestClassifier(n_estimators=100, bootstrap = True, max_features = 'sqrt')
             slide_model.fit(just_features, labels)
-            dump(slide_model, self.output_dir / 'slide_model.joblib')
+            dump(slide_model, classifier_dir / 'slide_model.joblib')
 
         just_features = just_features.astype(np.float)
         predictions = slide_model.predict(just_features)
@@ -378,7 +386,7 @@ class SlideClassifierWang(SlideClassifier):
         tags_df.columns = ["tags"]
         slide_results = pd.concat((slides_names_df, slides_labels_df, tags_df, preds_probs_df), axis=1)
 
-        slide_results.to_csv(self.output_dir / 'slide_results.csv', index=False)
+        slide_results.to_csv(features_dir / 'slide_results.csv', index=False)
 
 
 class SlideClassifierLee(SlideClassifier):
@@ -418,7 +426,7 @@ class SlideClassifierLee(SlideClassifier):
         assert heatmap.dtype == 'float' and np.max(heatmap) <= 1.0 and np.min(heatmap) >= 0.0, "Heatmap in wrong format"
 
         # get two largest areas at 0.5 thresh
-        segmentor = DBScan(0.5)
+        segmentor = DBScan(0.58, eps=3, min_samples=20)
         labelled_image = segmentor.segment(heatmap)
         labelled_image = np.array(labelled_image, dtype='int')
 
@@ -460,22 +468,24 @@ class SlideClassifierLee(SlideClassifier):
 
         return features_df
 
-    def predict_slide_level(self, retrain=False):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        features = pd.read_csv(self.output_dir / 'features.csv')
+
+    def predict_slide_level(self, features_dir: Path, classifier_dir: Path, retrain=False):
+        classifier_dir.mkdir(parents=True, exist_ok=True)
+        features = pd.read_csv(features_dir / 'features.csv')
 
         just_features = features.drop(['slidename', 'slide_label', 'tags'], axis=1)
         labels = features['slide_label']
+        labels = [lab.lower() for lab in labels]
         names = features['slidename']
         tags = features['tags']
 
-        # fit or load (NB not all experiments will fit a sepearate model so fitting bundled in with predict)
-        if Path(self.output_dir, 'slide_model.joblib').is_file() and not retrain:
-            slide_model = load(self.output_dir / 'slide_model.joblib')
+        # fit or load (NB not all experiments will fit a separate model so fitting bundled in with predict)
+        if Path(classifier_dir, 'slide_model.joblib').is_file() and not retrain:
+            slide_model = load(classifier_dir / 'slide_model.joblib')
         else:
             slide_model = XGBClassifier()
             slide_model.fit(just_features, labels)
-            dump(slide_model, self.output_dir / 'slide_model.joblib')
+            dump(slide_model, classifier_dir / 'slide_model.joblib')
 
         just_features = just_features.astype(np.float)
         predictions = slide_model.predict(just_features)
@@ -495,7 +505,7 @@ class SlideClassifierLee(SlideClassifier):
         tags_df.columns = ["tags"]
         slide_results = pd.concat((slides_names_df, slides_labels_df, tags_df, preds_probs_df), axis=1)
 
-        slide_results.to_csv(self.output_dir / 'slide_results.csv', index=False)
+        slide_results.to_csv(features_dir / 'slide_results.csv', index=False)
 
 
 class SlideClassifierLiu(SlideClassifier):
@@ -512,9 +522,9 @@ class SlideClassifierLiu(SlideClassifier):
 
         return feature_df
 
-    def predict_slide_level(self):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        features = pd.read_csv(output_dir / 'features.csv')
+    def predict_slide_level(self, features_dir: Path):
+        features_dir.mkdir(parents=True, exist_ok=True)
+        features = pd.read_csv(features_dir / 'features.csv')
 
         just_features = features.drop(['slidename', 'slide_label', 'tags'], axis=1)
         labels = features['slide_label']
@@ -522,7 +532,7 @@ class SlideClassifierLiu(SlideClassifier):
         tags = features['tags']
 
         just_features = just_features.astype(np.float)
-        predictions = np.array(just_features.max_probability > 0.9)
+        predictions = np.array(just_features.max_probability > 0.998)
         predictions = np.where(predictions, "tumor", "normal")
         # Probabilities for each class
         probabilities = np.array(just_features.max_probability)
@@ -531,12 +541,11 @@ class SlideClassifierLiu(SlideClassifier):
         # combine predictions and probailities into a dataframe
         reshaped_predictions = predictions.reshape((predictions.shape[0], 1))
         preds_probs_df = pd.DataFrame(np.hstack((reshaped_predictions, probabilities)))
-        print(self.slide_labels.keys())
-        print(preds_probs_df)
         preds_probs_df.columns = ["predictions"] + list(self.slide_labels.keys())
         # create slide label dataframe
         slides_labels_df = pd.DataFrame(labels)
         slides_labels_df.columns = ["true_label"]
+        slides_labels_df["true_label"] = [lab.lower() for lab in slides_labels_df["true_label"]]
         # create one dataframe with slide results and true labels
         slides_names_df = pd.DataFrame(names)
         slides_names_df.columns = ["slide_names"]
@@ -544,4 +553,4 @@ class SlideClassifierLiu(SlideClassifier):
         tags_df.columns = ["tags"]
         slide_results = pd.concat((slides_names_df, slides_labels_df, tags_df, preds_probs_df), axis=1)
 
-        slide_results.to_csv(self.output_dir / 'slide_results.csv', index=False)
+        slide_results.to_csv(features_dir / 'slide_results.csv', index=False)

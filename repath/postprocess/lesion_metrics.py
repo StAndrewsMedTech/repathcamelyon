@@ -26,12 +26,14 @@ def computeITCList(evaluation_mask, resolution, level):
         Isolated_Tumor_Cells: list of labels containing Isolated Tumor Cells
     """
     max_label = np.amax(evaluation_mask)
+    mask_labels = np.unique(evaluation_mask)
     properties = measure.regionprops(evaluation_mask)
     Isolated_Tumor_Cells = []
     threshold = 275 / (resolution * pow(2, level))
-    for i in range(0, max_label):
+    print(len(properties), len(mask_labels))
+    for i in range(0, len(properties)):
         if properties[i].major_axis_length < threshold:
-            Isolated_Tumor_Cells.append(i + 1)
+            Isolated_Tumor_Cells.append(mask_labels[i + 1])
     return Isolated_Tumor_Cells
 
 
@@ -65,6 +67,7 @@ def compute_FP_TP_Probs(Ycorr, Xcorr, Probs, is_tumor, evaluation_mask, Isolated
     """
 
     max_label = np.amax(evaluation_mask)
+    print("max_label", max_label)
     FP_probs = []
     TP_probs = np.zeros((max_label,), dtype=np.float32)
     detection_summary = {}
@@ -189,11 +192,12 @@ def evaluate_froc(mask_dir: Path, lesions: pd.DataFrame,
         Xcorr = lesions_slide.centre_x.astype(int).to_list()
         Ycorr = lesions_slide.centre_y.astype(int).to_list()
         # test files are named test convert name to tumor so names match
-        if case[0:4] == 'test':
-            case = 'tumor' + case[4:]
-        file_exists = Path(os.path.join(mask_dir, case) + '_evaluation_mask.png').is_file()
+        #if case[0:4] == 'test':
+        #    case = 'tumor' + case[4:]
+        file_exists = Path(os.path.join(mask_dir, case) + '.png').is_file()
+        print(Path(os.path.join(mask_dir, case) + '.png'), file_exists)
         if (file_exists):
-            evaluation_mask = cv2.imread(os.path.join(mask_dir, case) + '_evaluation_mask.png', 0)
+            evaluation_mask = cv2.imread(os.path.join(mask_dir, case) + '.png', 0)
             ITC_labels = computeITCList(evaluation_mask, level_zero_resolution, evaluation_mask_level)
         else:
             evaluation_mask = 0
@@ -205,6 +209,7 @@ def evaluate_froc(mask_dir: Path, lesions: pd.DataFrame,
         results = compute_FP_TP_Probs(Ycorr, Xcorr, Probs, file_exists, evaluation_mask, ITC_labels, evaluation_mask_level)
         FP_list = FP_list + list(results[0])
         TP_list = TP_list + list(results[1])
+        print("results",results[2])
         total_tumor += results[2]
         n_imgs += 1
         FROC_data[1][caseNum], FROC_data[2][caseNum], FROC_data[3][caseNum], detection_summary[1][caseNum], \

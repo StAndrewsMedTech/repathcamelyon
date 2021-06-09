@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import threading
 from typing import List, Sequence
+import time
 
 import cv2
 import numpy as np
@@ -102,6 +103,7 @@ class CombinedPatchSet(PatchSet):
                     slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
                     patch_filename = slide_name_str + f"-{row.x}-{row.y}.png"
                     image_path = output_dir / label / patch_filename
+                    image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
                     cv2.imwrite(str(image_path), np.array(image))
                     # image.save(image_path)
 
@@ -157,6 +159,8 @@ class CombinedIndex(object):
         for cps_idx, cps_group in self.patches_df.groupby('cps_idx'):
             for slide_idx, sl_group in cps_group.groupby('slide_idx'):
                 slide_path, _, _, _ = self.datasets[cps_idx][slide_idx]
+                print(slide_path)
+                stime = time.time()
                 with self.datasets[cps_idx].slide_cls(slide_path) as slide:
                     print(f"Writing patches for {self.datasets[cps_idx].to_rel_path(slide_path)}")
                     for row in sl_group.itertuples():
@@ -181,8 +185,20 @@ class CombinedIndex(object):
                         slide_name_str = str(rel_slide_path)[:-4].replace('/', '-')
                         patch_filename = slide_name_str + f"-{row.x}-{row.y}{affix}.png"
                         image_path = output_dir / label / patch_filename
+                        image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
                         cv2.imwrite(str(image_path), np.array(image))
                         # image.save(image_path)
+                    print(time.time()-stime)
+
+
+    def save(self, output_dir: Path) -> None:
+        """Saves a csv file for each slide.
+
+        Args:
+            output_dir (Path): The path to save the csv file.
+        """
+        output_dir.mkdir(parents=True, exist_ok=True)
+        self.patches_df.to_csv(output_dir / 'combined_index.csv', index=False)
 
 
 

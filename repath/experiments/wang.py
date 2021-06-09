@@ -13,12 +13,17 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
+from repath.data.datasets.dataset import Dataset
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
-from repath.preprocess.sampling import split_camelyon16, balanced_sample
+from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
 from torchvision.models import GoogLeNet
 from repath.utils.seeds import set_seed
+from repath.postprocess.patch_level_results import patch_level_metrics
+from repath.postprocess.slide_level_metrics import SlideClassifierWang
+from repath.postprocess.find_lesions import LesionFinderWang
+
 
 """
 Global stuff
@@ -109,11 +114,18 @@ def preprocess_samples() -> None:
     # load in the train and valid indexes
     train_data = camelyon16.training()
     train = SlidesIndex.load(train_data, experiment_root / "train_index")
+    print("read train index")
     valid = SlidesIndex.load(train_data, experiment_root / "valid_index")
+    print("read valid index")
 
     # sample from train and valid sets
     train_samples = balanced_sample([train], 2000000)
+    print("balanced train sample")
     valid_samples = balanced_sample([valid], 500000)
+    print("balanced valid sample")
+
+    train_samples.save(experiment_root / "train_samples")
+    valid_samples.save(experiment_root / "valid_samples")
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
@@ -153,7 +165,7 @@ def train_patch_classifier() -> None:
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
         min_delta=0.00,
-        patience=5,
+        patience=3,
         verbose=False,
         mode='max'
     )
@@ -163,12 +175,12 @@ def train_patch_classifier() -> None:
 
     # train our model
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=5, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
-def inference_on_train() -> None:
+def inference_on_train_pre() -> None:
     set_seed(global_seed)
     cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
@@ -186,12 +198,11 @@ def inference_on_train() -> None:
     mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
     train_data_cut_down.paths = train_data_cut_down.paths[mask]
 
-    #patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
-    #train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
-    #train_patches_grid.save(experiment_root / "train_index_grid")
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
+    train_patches_grid.save(experiment_root / "train_index_grid")
 
     train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
-    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
         RandomCrop((224, 224)),
@@ -276,3 +287,314 @@ def retrain_patch_classifier_hnm() -> None:
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
                      logger=csv_logger, log_every_n_steps=1)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+
+
+def inference_on_train_post() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "train16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "train_index")
+
+    # original training data indexes are overlapping we need non overlapping grid for inference
+    train_ol_slides = [pat.slide_path for pat in train_overlapping.patches]
+    train_data_cut_down = camelyon16.training()
+    mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
+    train_data_cut_down.paths = train_data_cut_down.paths[mask]
+
+    train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    train_results16.save()
+
+
+def inference_on_valid_pre() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "pre_hnm_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original training data indexes are overlapping we need non overlapping grid for inference
+    valid_ol_slides = [pat.slide_path for pat in valid_overlapping.patches]
+    valid_data_cut_down = camelyon16.training()
+    mask = [sl in valid_ol_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    valid_patches_grid = SlidesIndex.index_dataset(valid_data_cut_down, tissue_detector, patch_finder)
+    valid_patches_grid.save(experiment_root / "valid_index_grid")
+
+    valid_patches_grid = SlidesIndex.load(valid_data_cut_down, experiment_root / "valid_index_grid")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    valid_results16.save()
+
+
+def inference_on_valid_post() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "valid16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    valid_overlapping = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index")
+
+    # original training data indexes are overlapping we need non overlapping grid for inference
+    valid_ol_slides = [pat.slide_path for pat in valid_overlapping.patches]
+    valid_data_cut_down = camelyon16.training()
+    mask = [sl in valid_ol_slides for sl in valid_data_cut_down.paths.slide]
+    valid_data_cut_down.paths = valid_data_cut_down.paths[mask]
+
+    valid_patches_grid = SlidesIndex.load(valid_data_cut_down, experiment_root / "valid_index_grid")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    valid_results16.save()
+
+
+def preprocess_test_index() -> None:
+    set_seed(global_seed)
+    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+
+    # initalise datasets
+    test_data16 = camelyon16.testing()
+
+    # find all patches in datasets
+    test_patches16 = SlidesIndex.index_dataset(test_data16, tissue_detector, patch_finder)
+
+    # save
+    test_patches16.save(experiment_root / "test_index16")
+
+
+def inference_on_test_pre() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "pre_hnm_results" / "test16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    test_patches = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index16")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    test_results16.save()
+
+
+def inference_on_test_post() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model_hnm").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir16 = experiment_root / "post_hnm_results" / "test16"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    test_patches = SlidesIndex.load(camelyon16.testing(), experiment_root / "test_index16")
+    # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
+
+    transform = Compose([
+        RandomCrop((224, 224)),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+    test_results16.save()
+
+
+def calculate_patch_level_results() -> None:
+    def patch_dataset_function(modelname: str, splitname: str, dataset16: Dataset, ci: bool = False):
+        # define strings for model and split
+        model_dir_name = modelname + '_results'
+        splitname16 = splitname + '16'
+        results_out_name = "patch_summaries"
+        results_in_name = "results"
+        heatmap_in_name = "heatmaps"
+
+        # set paths for model and split
+        model_dir = experiment_root / model_dir_name
+        splitdirin16 = model_dir / splitname16
+        splitdirout16 = model_dir / results_out_name / splitname16
+
+        # read in predictions
+        split_results_16 = SlidesIndexResults.load(dataset16, splitdirin16,
+                                                                 results_in_name, heatmap_in_name)
+
+        # calculate patch level results
+        title16 = experiment_name + ' experiment ' + modelname + ' model Camelyon 16 ' + splitname + ' dataset'
+        patch_level_metrics([split_results_16], splitdirout16, title16, ci=ci)
+
+    set_seed(global_seed)
+
+    valid = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    cam16_valid = get_subset_of_dataset(valid, camelyon16.training())
+
+    patch_dataset_function("pre_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("pre_hnm", "test", camelyon16.testing(), ci=False)
+    patch_dataset_function("post_hnm", "valid", cam16_valid, ci=False)
+    patch_dataset_function("post_hnm", "test", camelyon16.testing(), ci=False)
+
+
+def calculate_slide_level_results_pre() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    trainresultsin_pre = experiment_root / "pre_hnm_results" / "train16" 
+    validresultsin_pre = experiment_root / "pre_hnm_results" / "valid16" 
+    testresultsin_pre = experiment_root / "pre_hnm_results" / "test16" 
+
+    trainresults_out_pre = experiment_root / "pre_hnm_results" / "slide_results16_train"
+    validresults_out_pre = experiment_root / "pre_hnm_results" / "slide_results16_valid"
+    testresults_out_pre = experiment_root / "pre_hnm_results" / "slide_results16_test"
+
+    title_prev = experiment_name + " experiment, pre hnm model, Camelyon 16 valid dataset"
+    title_pret = experiment_name + " experiment, pre hnm model, Camelyon 16 test dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    train_results_pre = SlidesIndexResults.load(camelyon16.training(), trainresultsin_pre, results_dir_name, heatmap_dir_name)
+    valid_results_pre = SlidesIndexResults.load(camelyon16_validation, validresultsin_pre, results_dir_name, heatmap_dir_name)
+    test_results_pre = SlidesIndexResults.load(camelyon16.testing(), validresultsin_pre, results_dir_name, heatmap_dir_name)
+
+    slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
+    slide_classifier.calc_features(train_results_pre, trainresults_out_pre)
+    slide_classifier.calc_features(valid_results_pre, validresults_out_pre)
+    slide_classifier.calc_features(test_results_pre, testresults_out_pre)
+    slide_classifier.predict_slide_level(features_dir=trainresults_out_pre, classifier_dir=trainresults_out_pre, retrain=True)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_pre, classifier_dir=trainresults_out_pre, retrain=False)
+    slide_classifier.calc_slide_metrics(title_prev, validresults_out_pre)
+    slide_classifier.calc_slide_metrics(title_pret, testresults_out_pre)
+
+
+
+def calculate_slide_level_results_post() -> None:
+    set_seed(global_seed)
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    trainresultsin_post = experiment_root / "post_hnm_results" / "train16" 
+    validresultsin_post = experiment_root / "post_hnm_results" / "valid16" 
+    testresultsin_post = experiment_root / "post_hnm_results" / "test16" 
+
+    trainresults_out_post = experiment_root / "post_hnm_results" / "slide_results16_train"
+    validresults_out_post = experiment_root / "post_hnm_results" / "slide_results16_valid"
+    testresults_out_post = experiment_root / "post_hnm_results" / "slide_results16_test"
+
+    title_postv = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
+    title_postt = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    train_results_post = SlidesIndexResults.load(camelyon16.training(), trainresultsin_post, results_dir_name, heatmap_dir_name)
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, validresultsin_post, results_dir_name, heatmap_dir_name)
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), validresultsin_post, results_dir_name, heatmap_dir_name)
+
+    slide_classifier = SlideClassifierWang(camelyon16.training().slide_labels)
+    slide_classifier.calc_features(train_results_post, trainresults_out_post)
+    slide_classifier.calc_features(valid_results_post, validresults_out_post)
+    slide_classifier.calc_features(test_results_post, testresults_out_post)
+    slide_classifier.predict_slide_level(features_dir=trainresults_out_post, classifier_dir=trainresults_out_post, retrain=True)
+    slide_classifier.predict_slide_level(features_dir=validresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    slide_classifier.predict_slide_level(features_dir=testresults_out_post, classifier_dir=trainresults_out_post, retrain=False)
+    slide_classifier.calc_slide_metrics(title_postv, validresults_out_post)
+    slide_classifier.calc_slide_metrics(title_postt, testresults_out_post)
+
+
+def calculate_lesion_level_results_valid() -> None:
+    set_seed(global_seed)
+
+    resultsin_pre = experiment_root / "pre_hnm_results" / "valid16" 
+    resultsin_post = experiment_root / "post_hnm_results" / "valid16" 
+
+    results_out_post = experiment_root / "post_hnm_results" / "lesion_results" / "valid16"
+
+    mask_dir = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'training'
+
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
+
+    camelyon16_validation = SlidesIndex.load(camelyon16.training(), experiment_root / "valid_index") 
+    camelyon16_validation = get_subset_of_dataset(camelyon16_validation, camelyon16.training())
+
+    valid_results_pre = SlidesIndexResults.load(camelyon16_validation, resultsin_pre, "results", "heatmaps")
+    valid_results_post = SlidesIndexResults.load(camelyon16_validation, resultsin_post, "results", "heatmaps")
+
+    # wang example need both pre and post
+    lesion_finder = LesionFinderWang(mask_dir, results_out_post)
+    lesion_finder.calc_lesions(valid_results_pre, valid_results_post)
+    lesion_finder.calc_lesion_results(title_post)
+    
+
+
+def calculate_lesion_level_results_test() -> None:
+    set_seed(global_seed)
+
+    resultsin_pre = experiment_root / "pre_hnm_results" / "test16" 
+    resultsin_post = experiment_root / "post_hnm_results" / "test16" 
+
+    results_out_post = experiment_root / "post_hnm_results" / "lesion_results" / "test16"
+
+    mask_dir = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'testing'
+
+    title_post = experiment_name + " experiment, post hnm model, Camelyon 16 test dataset"
+
+    test_results_pre = SlidesIndexResults.load(camelyon16.testing(), resultsin_pre, "results", "heatmaps")
+    test_results_post = SlidesIndexResults.load(camelyon16.testing(), resultsin_post, "results", "heatmaps")
+
+    # wang example need both pre and post
+    lesion_finder = LesionFinderWang(mask_dir, results_out_post)
+    lesion_finder.calc_lesions(test_results_pre, test_results_post)
+    lesion_finder.calc_lesion_results(title_post)

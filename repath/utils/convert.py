@@ -67,3 +67,29 @@ def remove_item_from_dict(dict_in: dict, key_to_remove: str) -> dict:
     dict_out = dict(dict_in)
     del dict_out[key_to_remove]
     return dict_out
+
+
+def average_patches(slides_index, naugs: int, new_dir):
+    """ averages results from patch sets with multiple augments per patch
+    """
+    for ps in slides_index:
+        df = ps.patches_df
+        ps.patches_df = df.groupby(['x', 'y'], as_index=False).mean()
+
+    slides_index.output_dir = new_dir
+    
+    return slides_index
+
+
+def get_concat_h(im1, im2):
+    dst = Image.new('RGB', (im1.width + im2.width, im1.height))
+    dst.paste(im1, (0, 0))
+    dst.paste(im2, (im1.width, 0))
+    return dst
+
+
+def get_concat_v(im1, im2):
+    dst = Image.new('RGB', (im1.width, im1.height + im2.height))
+    dst.paste(im1, (0, 0))
+    dst.paste(im2, (0, im1.height))
+    return dst 
