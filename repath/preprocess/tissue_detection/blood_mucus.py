@@ -31,21 +31,7 @@ def get_slides_annots(dset, level, default_label="tissue"):
     return thumbz, annotz
 
 
-def get_annot_areas(dset, level):
-    annotz = []
 
-    for dd in dset:
-        slide_path, annot_path, _, _ = dd
-        with Slide(dset.root / slide_path) as slide:
-            thumb = slide.get_thumbnail(level)
-            annotations = dset.load_annotated_area(annot_path)
-            if len(annotations.annotations) > 0:
-                annot = annotations.render(thumb.shape[0:2], 2**level)
-            else:
-                annot = np.ones(thumb.shape, dtype=np.uint8) * 5
-            annotz.append(annot)
-
-    return annotz
 
 
 def apply_tissue_detection(thumbz, tissue_detector):
