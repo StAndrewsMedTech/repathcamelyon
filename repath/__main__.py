@@ -11,7 +11,7 @@ import repath.experiments.cervical_algorithm1 as cervical1
 import repath.experiments.cervical_algorithm2 as cervical2
 import repath.experiments.cervical_algorithm3 as cervical3
 import repath.experiments.cervical_algorithm4 as cervical4
-import repath.experiments.bloodmuc_lev4_rf as bm_lev4
+import repath.experiments.bloodmuc_rework as bm
 
 @group()
 @version_option("1.0.0")

@@ -17,14 +17,16 @@ class BloodMucus(Dataset):
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path, default_label: str) -> AnnotationSet:
-        group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background", "Ignore*": "background"}
+        group_labels = {"background": "background", "ignore": "background", "Ignore*": "background", 
+        "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus"}
         labels = {"background": 0, "tissue": 1, "blood": 2, "mucus": 3, "blood_mucus": 4}
         annotations = load_annotations(file, group_labels, default_label) if file else []
         labels_order = ["background", "blood", "mucus", "blood_mucus", "tissue"]
         return AnnotationSet(annotations, labels, labels_order, "background")
 
     def load_annotated_area(self, file: Path) -> AnnotationSet:
-        group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "ignore": "background", "Ignore*": "background", "annotated_area": "annotated_area"}
+        group_labels = {"background": "background", "ignore": "background", "Ignore*": "background", 
+            "Tissue": "tissue", "tissue": "tissue", "blood": "blood", "mucus": "mucus", "blood/mucus": "blood_mucus", "annotated_area": "annotated_area"}
         labels = {"background": 0, "annotated_area": 5}
         # assumes the annotated area annotation is unlabelled
         default_label = "annotated_area"
@@ -65,8 +67,8 @@ def training():
     annot_paths = sorted(annot_paths)
 
     # for debug
-    slide_paths = slide_paths[0:19]
-    annot_paths = annot_paths[0:19]
+    # slide_paths = slide_paths[0:3]
+    # annot_paths = annot_paths[0:3]
    
     # turn them into a data frame and pad with empty annotation paths
     df = pd.DataFrame()
