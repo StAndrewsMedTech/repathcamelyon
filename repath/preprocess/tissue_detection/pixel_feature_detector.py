@@ -30,8 +30,50 @@ class TextureFeature(PixelFeature):
         return eigvals
 
 
+
+def calc_HE_color_deconv(im):
+    """ calculates H&E channels for an image using color deconvolution
+
+    Adapted from https://github.com/DigitalSlideArchive/HistomicsTK/blob/master/histomicstk/preprocessing/color_deconvolution/color_deconvolution.py
+
+
+    Args:
+        im (ndarray): rgb value image on scale 0-255
+
+    Returns:
+        a numpy array of same size with two channels one for hematoxylin and one for eosin
+    """
+    # flatten image vector
+    im_rgb = im.reshape((-1, im.shape[-1])).T
+
+    # convert to optical density
+    I_0 = 256
+    im_rgb = im_rgb.astype(float) + 1
+    im_sda = -np.log(im_rgb/(1.* I_0)) * 255/np.log(I_0)
+
+    # work out stain vector
+    w = np.array([[0.650, 0.072, 0], [0.704, 0.990, 0], [0.286, 0.105, 0]])
+    stain0 = w[:, 0]
+    stain1 = w[:, 1]
+    stain2 = np.cross(stain0, stain1)
+    wc = np.array([stain0, stain1, stain2 / np.linalg.norm(stain2)]).T
+    wc = wc / np.sqrt((wc ** 2).sum(0))
+    Q = np.linalg.inv(wc)
+
+    # apply deconvolution
+    sda_deconv = np.dot(Q, im_sda)
+
+    # reshape and rescale for output
+    stain_im = sda_deconv.T.reshape(im.shape[:-1] + (sda_deconv.shape[0],))
+    stain_out = stain_im.clip(0, 255).astype(np.uint8)
+    he_out = stain_out[:, :, 0:2]
+
+    return he_out
+
+
+
 class PixelFeatureDetector(object):
-    def __init__(self, features_list: List, sigma_min: int = 1, sigma_max: int = 16, num_sigma: int = None, num_workers: int = None) -> None:
+    def __init__(self, features_list: List, sigma_min: int = 1, sigma_max: int = 16, num_sigma: int = None, num_workers: int = None, h_e: bool = False, raw=False) -> None:
         if num_sigma is None:
             num_sigma = int(np.log2(sigma_max) - np.log2(sigma_min) + 1)
         sigmas = np.logspace(
@@ -41,9 +83,12 @@ class PixelFeatureDetector(object):
             base=2,
             endpoint=True,
         )
+        if raw:
+            sigmas = np.hstack((0, sigmas))
         self.sigmas = sigmas
         self.num_workers = num_workers
         self.features_list = features_list
+        self.h_e = h_e
 
     def per_channel(self, img):
         def singlescale_features_singlechannel(self, img, sigma):
@@ -67,6 +112,10 @@ class PixelFeatureDetector(object):
         return out_sigmas
 
     def __call__(self, image: np.ndarray) -> np.array:
+
+        if self.h_e:
+            he_channels = calc_HE_color_deconv(image)
+            image = np.dstack((image, he_channels))
 
         for dim in range(image.shape[-1]):
             res = self.per_channel(image[..., dim])
