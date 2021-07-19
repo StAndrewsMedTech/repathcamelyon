@@ -190,6 +190,29 @@ def inference_on_valid_pre() -> None:
     valid_results.save()
 
 
+def inference_on_train_pre() -> None:
+    set_seed(global_seed)
+    cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
+    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
+
+    output_dir = experiment_root / "patch_results" / "train"
+
+    results_dir_name = "results"
+    heatmap_dir_name = "heatmaps"
+
+    train_patches = SlidesIndex.load(cervical.debug(), experiment_root / "train_index")
+
+    transform = Compose([
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    train_results = SlidesIndexResults.predict(train_patches, classifier, transform, 128, output_dir,
+                                                 results_dir_name, heatmap_dir_name, nthreads=2, 
+                                                 heatmap_classes=['normal', 'low_grade', 'high_grade', 'malignant'])
+    train_results.save()
+
+
 def calculate_patch_level_results() -> None:
 
     set_seed(global_seed)
