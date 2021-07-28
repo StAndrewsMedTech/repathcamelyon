@@ -20,9 +20,26 @@ class Cervical(Dataset):
         group_labels = {"low_grade": "low_grade", "Low Grade": "low_grade", "Low grade": "low_grade", "low grade" : "low_grade",
             "high_grade": "high_grade", "High Grade": "high_grade", "High grade": "high_grade", "high grade": "high_grade",
             "malignant": "malignant", "Malignant":"malignant", 
-            "Normal/inflammation": "normal", "normal": "normal"}
+            "Normal/inflammation": "normal", "normal/inflammation": "normal", "normal": "normal"}
         annotations = load_annotations(file, group_labels, "normal") if file else []
         labels_order = ["low_grade",  "high_grade",  "malignant", "normal"]
+        maxann = "normal_inflammation"
+        for ann in annotations:
+            annlab = ann.label
+            if annlab == "low_grade":
+                if maxann == "normal_inflammation":
+                    maxann = annlab
+            if annlab == "high_grade":
+                if maxann == "normal_inflammation":
+                    maxann = annlab
+                if maxann =="low_grade":
+                    maxann = annlab
+            if annlab == "malignant":
+                maxann = annlab
+
+        if maxann != label:
+            print(f'slide label does not match annotations, slide label is {label}, worst annotation is {maxann}')
+
         return AnnotationSet(annotations, self.labels, labels_order, "normal")
 
     @property
@@ -48,7 +65,7 @@ class Cervical_subCategories(Cervical):
         return {"normal": 1, "cin1": 2, "hpv":3 , "cin2": 4, "cin3": 5, "squamous_carcinoma": 6, "adenocarcinoma": 7, "cgin": 8, "other": 9}
 
 
-def debug():
+def set2():
     """ Generated a data-frame of slide_path, annotation_path, label and tags for train dataset.
 
     Returns:
@@ -60,7 +77,7 @@ def debug():
     annotations_dir = "iCAIRD_annotations"
     metadata_dir = root / "iCAIRD_metadata"
     
-    csv_path = metadata_dir / "iCAIRD_Cervical_Data_algo1.csv"
+    csv_path = metadata_dir / "iCAIRD_Cervical_Data_algo2.csv"
 
     cervical_df = pd.read_csv(csv_path)
 
@@ -68,7 +85,7 @@ def debug():
         batch_no = df_row.batch
         image_name = str(df_row.Filename)
         annot_name = image_name[:-7] + "tiff.txt"
-        annot_name = '/batch' + str(batch_no) + "/" + annot_name
+        annot_name = '/batch' + str(int(batch_no)) + "/" + annot_name
         return annot_name
 
     cervical_df['annot_path'] = cervical_df.apply(annotation_rel_path, axis = 1)
@@ -77,7 +94,7 @@ def debug():
     df["slide"] =  str(image_dir)+ '/' + cervical_df['Filename']
     df["annotation"] = str(annotations_dir) + cervical_df['annot_path']
     df["label"] = cervical_df['Category']
-    df["tags"] = cervical_df['subCategory'] + ";" + cervical_df['train_valid_algo1']
+    df["tags"] = cervical_df['subCategory'] + ";" + cervical_df['train_valid_v2']
    
     return Cervical(root, df)
 

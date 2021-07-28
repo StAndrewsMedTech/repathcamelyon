@@ -26,7 +26,7 @@ class Endometrial(Dataset):
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
     
-    def load_annotations(self, file: Path) -> AnnotationSet:
+    def load_annotations(self, file: Path, label: str) -> AnnotationSet:
         group_labels = {"malignant": "malignant", "insufficient": "insufficient", "other_benign": "other_benign"}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = [ "malignant", "insufficient", "other_benign"]

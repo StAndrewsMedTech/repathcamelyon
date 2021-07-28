@@ -231,7 +231,7 @@ class SlidePatchSet(PatchSet):
         Returns:
             pathset: 
         """
-        slide_path, annotation_path, _, _ = dataset[slide_idx]
+        slide_path, annotation_path, rowlabel, _ = dataset[slide_idx]
         with dataset.slide_cls(slide_path) as slide:
             print(f"indexing {slide_path.name}")  # TODO: Add proper logging!
             if patch_finder.labels_level >= len(slide.dimensions):
@@ -243,7 +243,7 @@ class SlidePatchSet(PatchSet):
             else:
                 labels_shape = slide.dimensions[patch_finder.labels_level].as_shape()
             if notblank:
-                annotations = dataset.load_annotations(annotation_path)
+                annotations = dataset.load_annotations(annotation_path, rowlabel)
                 scale_factor = 2 ** patch_finder.labels_level
                 labels_image = annotations.render(labels_shape, scale_factor)
             else:
