@@ -20,7 +20,7 @@ class Camelyon16(Dataset):
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
 
-    def load_annotations(self, file: Path) -> AnnotationSet:
+    def load_annotations(self, file: Path, label: str) -> AnnotationSet:
             """ Load annotations form a given annotation file path.
 
             Args:

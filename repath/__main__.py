@@ -11,6 +11,7 @@ import repath.experiments.cervical_algorithm1 as cervical1
 import repath.experiments.cervical_algorithm2 as cervical2
 import repath.experiments.cervical_algorithm3 as cervical3
 import repath.experiments.cervical_algorithm4 as cervical4
+import repath.experiments.cervical_set2_exp1 as cervical_set2
 import repath.experiments.bloodmuc_rework as bm
 import repath.experiments.bloodmuc_sample_size as bm2
 import repath.experiments.bloodmuc_sigma as bm3

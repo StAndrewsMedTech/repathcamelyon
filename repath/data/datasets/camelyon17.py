@@ -20,7 +20,7 @@ class Camelyon17(Dataset):
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
 
-    def load_annotations(self, file: Path) -> AnnotationSet:
+    def load_annotations(self, file: Path, label: str) -> AnnotationSet:
         group_labels = {"metastases": "tumor", "normal": "normal"}
         annotations = load_annotations(file, group_labels) if file else []
         labels_order = ["background", "tumor", "normal"]

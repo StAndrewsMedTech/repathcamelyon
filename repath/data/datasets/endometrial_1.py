@@ -32,7 +32,7 @@ class Endometrial_subCategories(Endometrial):
 
 
 class Endometrial(Dataset):
-    def __init__(self, root: Path, paths: pd.DataFrame) -> None:
+    def __init__(self, root: Path, paths: pd.DataFrame, label: str) -> None:
         super().__init__(root, paths)
     
     def load_annotations(self, file: Path) -> AnnotationSet:

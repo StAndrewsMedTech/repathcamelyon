@@ -16,7 +16,7 @@ class TissueGame(Dataset):
     def __init__(self, root: Path, paths: pd.DataFrame) -> None:
         super().__init__(root, paths)
     
-    def load_annotations(self, file: Path) -> AnnotationSet:
+    def load_annotations(self, file: Path, label: str) -> AnnotationSet:
         group_labels = {"background": "background", "Tissue": "tissue", "tissue": "tissue"}
         labels = {"background": 0, "tissue": 1}
         default_label = "tissue"

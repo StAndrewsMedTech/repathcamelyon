@@ -49,6 +49,7 @@ def annotation_from_feature(feature: Dict, group_labels: Dict[str, str],
         classification = properties['classification']
         label = classification['name']
     else:
+        print("unlabelled annotation")
         label = default_label
 
     assert label in group_labels.keys(), f'Unknown annotation group {label}'
@@ -59,6 +60,10 @@ def annotation_from_feature(feature: Dict, group_labels: Dict[str, str],
     elif geometry_type == 'MultiPolygon':
         annotations_list = [gjson_polygon(crd, label, default_label) for crd in coordinates]
         annotations_list = [item for sublist in annotations_list for item in sublist]
+    else:
+        ### HACK to return anything else
+        annotations_list = []
+        print(geometry_type, properties)
     
     return annotations_list
 
