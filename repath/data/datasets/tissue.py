@@ -51,7 +51,7 @@ def tissue():
     df = pd.DataFrame()
     df["slide"] = slide_paths
     df["annotation"] = annot_paths
-    df["label"] = ["cervical"] * 9 + ["endometrial"] * 7
+    df["label"] = "unknown"  # ["cervical"] * 9 + ["endometrial"] * 7 - this labelling does not line up with the number of slides
     df["tags"] = ""
 
     return TissueDetection(root_dir, df)
