@@ -5,7 +5,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PROJECT_NAME = repath
+PROJECT_NAME = repath_camelyon
 PYTHON_INTERPRETER = python
 PYTHON_VERSION = 3.6
 
@@ -62,24 +62,9 @@ install_openslide:
 	pip install Pillow
 	pip install openslide-python
 
-install_isyntax_sdk:
-	sudo apt install gdebi -y
-	sudo gdebi -n ./libraries/philips-pathology-sdk/*pixelengine*.deb
-	sudo gdebi -n ./libraries/philips-pathology-sdk/*eglrendercontext*.deb
-	sudo gdebi -n ./libraries/philips-pathology-sdk/*gles2renderbackend*.deb
-	sudo gdebi -n ./libraries/philips-pathology-sdk/*gles3renderbackend*.deb
-	sudo gdebi -n ./libraries/philips-pathology-sdk/*softwarerenderer*.deb
-
 install_curl:
 	sudo apt -y install curl
 
-install_java:
-	sudo apt -y install software-properties-common
-	sudo add-apt-repository ppa:webupd8team/java
-	sudo apt -y install openjdk-8-jdk
-	sudo update-alternatives --config java # select Java 8
-	printf '\nexport JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64' >> ~/.bashrc
-	export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
 #################################################################################
 # CONTAINER COMMANDS                                                            #
@@ -93,7 +78,7 @@ docker_run:
 				-v $(PROJECT_DIR):/home/ubuntu/$(PROJECT_NAME) \
 				-v /raid/datasets:/home/ubuntu/$(PROJECT_NAME)/data \
 				-v /raid/experiments/$(PROJECT_NAME):/home/ubuntu/$(PROJECT_NAME)/experiments \
-				-v /mnt/isilon1/:/home/ubuntu/$(PROJECT_NAME)/icaird \
+				-v /mnt/isilon1/camelyon17:/home/ubuntu/$(PROJECT_NAME)/data/camelyon17 \
 				-it $(PROJECT_NAME):latest
 
 docker_run_local:
