@@ -41,6 +41,11 @@ patch_jitter = 8
 global_seed = 123
 
 
+def seed_worker(worker_id):
+    worker_seed = global_seed % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
@@ -56,12 +61,12 @@ class PatchClassifier(pl.LightningModule):
         loss2 = criterion(aux1, y)
         ### TODO:  check how losses are weighted
         loss = loss1 + 0.4 * loss2
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
         
         correct=pred.argmax(dim=1).eq(y).sum().item()
         total=len(y)   
         accu = correct / total
-        self.log("train_accuracy", accu)
+        self.log("train_accuracy", accu, on_step=False, on_epoch=True, sync_dist=True)
 
         return loss
 
@@ -72,12 +77,12 @@ class PatchClassifier(pl.LightningModule):
 
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, y)
-        self.log("val_loss", loss)
+        self.log("val_loss", loss, on_epoch=True, sync_dist=True)
         
         correct=pred.argmax(dim=1).eq(y).sum().item()
         total=len(y)   
         accu = correct / total
-        self.log("val_accuracy", accu)
+        self.log("val_accuracy", accu, on_epoch=True, sync_dist=True)
         return loss
 
     def configure_optimizers(self):
@@ -155,6 +160,8 @@ def train_patch_classifier() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
     
     # create dataloaders
+    g = torch.Generator()
+    g.manual_seed(0)
     train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
     valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
 
@@ -162,7 +169,7 @@ def train_patch_classifier() -> None:
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
         dirpath=experiment_root / "patch_model",
-        filename=f"checkpoint.ckpt",
+        filename=f"checkpoint",
         save_top_k=1,
         mode="max",
     )
@@ -181,7 +188,7 @@ def train_patch_classifier() -> None:
     # train our model
     classifier = PatchClassifier()
     trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
-                     logger=csv_logger, log_every_n_steps=1)
+                     logger=csv_logger, deterministic=True)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
@@ -201,8 +208,10 @@ def restart_patch_classifier() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)
     
     # create dataloaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=np.random.seed(global_seed))
+    g = torch.Generator()
+    g.manual_seed(0)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=4, worker_init_fn=seed_worker, generator=g)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=4, worker_init_fn=seed_worker, generator=g)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -225,10 +234,10 @@ def restart_patch_classifier() -> None:
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=1)
 
     # train our model
-    cp_path = experiment_root / "patch_model"/ "checkpoint.ckpt.ckpt"
-    classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
-    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
-                     logger=csv_logger, log_every_n_steps=1)
+    cp_path = experiment_root / "patch_model"/ "checkpoint.ckpt"
+    classifier = PatchClassifier()
+    trainer = pl.Trainer(resume_from_checkpoint=cp_path, callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+                     logger=csv_logger, deterministic=True)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
 
@@ -258,8 +267,9 @@ def preprocess_valid_inference():
 
 def inference_on_valid16() -> None:
     set_seed(global_seed)
-    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
+
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
+    #cp_path = experiment_root / "patch_model" / "restart_checkpoint.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
     output_dir16 = experiment_root / "inference_results" / "valid16"
@@ -313,8 +323,8 @@ def preprocess_testindex() -> None:
 
 def inference_on_test16() -> None:
     set_seed(global_seed)
-    # cp_path = list((experiment_root / "patch_model").glob("*.ckpt"))[0]
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt-v0.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
+    #cp_path = experiment_root / "patch_model" / "restart_checkpoint.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
     output_dir16 = experiment_root / "inference_results" / "test16"

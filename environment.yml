@@ -1,4 +1,4 @@
-name: repath
+name: repath_camelyon
 channels:
   - conda-forge
   - anaconda
