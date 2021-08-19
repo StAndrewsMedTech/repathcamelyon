@@ -46,14 +46,14 @@ RUN \
 
 # mount cwd to the project dir in the container
 # allow the ubuntu user to own and thus write to it
-ADD --chown=ubuntu . /home/ubuntu/repath
-WORKDIR "/home/ubuntu/repath"
+ADD --chown=ubuntu . /home/ubuntu/repathcamelyon
+WORKDIR "/home/ubuntu/repathcamelyon"
 
-# set up the repath project
+# set up the repathcamelyon project
 SHELL ["/bin/bash", "-c"]
 RUN make create_environment
 RUN conda init bash
-RUN echo "source activate repath" > ~/.bashrc
+RUN echo "source activate repathcamelyon" > ~/.bashrc
 ENV PATH /opt/conda/envs/env/bin:$PATH
 RUN make requirements
 

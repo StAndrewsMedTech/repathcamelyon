@@ -5,7 +5,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-PROJECT_NAME = repath_camelyon
+PROJECT_NAME = repathcamelyon
 PYTHON_INTERPRETER = python
 PYTHON_VERSION = 3.6
 
@@ -34,8 +34,8 @@ endif
 
 ## install the requirements into the python environment
 requirements: install_curl install_asap install_openslide
-	conda env update --file environment.yml
-	pip install -r requirements.txt
+	sudo conda env update --file environment.yml
+	sudo pip install -r requirements.txt
 
 ## save the python environment so it can be recreated
 export_environment:
@@ -51,9 +51,9 @@ export_environment:
 ASAP_LOCATION = https://github.com/computationalpathologygroup/ASAP/releases/download/1.9/ASAP-1.9-Linux-Ubuntu1804.deb
 install_asap:
 	sudo apt-get update
-	curl -o ASAP-1.9-Linux-Ubuntu1804.deb -L $(ASAP_LOCATION)
+	sudo curl -o ASAP-1.9-Linux-Ubuntu1804.deb -L $(ASAP_LOCATION)
 	sudo apt -y install ./ASAP-1.9-Linux-Ubuntu1804.deb
-	rm ASAP-1.9-Linux-Ubuntu1804.deb
+	sudo rm ASAP-1.9-Linux-Ubuntu1804.deb
 
 install_openslide:
 	sudo apt-get update
@@ -91,7 +91,7 @@ docker_run_local:
 #################################################################################
 setup_jupyter:
 	pip install --user ipykernel
-	python -m ipykernel install --user --name=repath
+	python -m ipykernel install --user --name=$(PROJECT_NAME)
 
 run_notebook:
 	jupyter lab --ip=* --port $(JUPYTER_PORT) --allow-root

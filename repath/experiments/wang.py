@@ -97,6 +97,7 @@ class PatchClassifier(pl.LightningModule):
 """
 Experiment step
 """
+
 def preprocess_indexes() -> None:
     """ Generates patch_index files for train and validation slide
     """
@@ -169,21 +170,13 @@ def train_patch_classifier() -> None:
         mode="max",
     )
 
-    early_stop_callback = EarlyStopping(
-        monitor='val_accuracy',
-        min_delta=0.00,
-        patience=3,
-        verbose=False,
-        mode='max'
-    )
-
     # create a logger
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
 
     # train our model
     torch.manual_seed(global_seed)
     classifier = PatchClassifier()
-    trainer = pl.Trainer(callbacks=[checkpoint_callback, early_stop_callback], gpus=8, accelerator="ddp", max_epochs=5, 
+    trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=3, 
                      logger=csv_logger, deterministic=True)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
@@ -610,3 +603,10 @@ def calculate_lesion_level_results_test() -> None:
     lesion_finder = LesionFinderWang(mask_dir, results_out_post)
     lesion_finder.calc_lesions(test_results_pre, test_results_post)
     lesion_finder.calc_lesion_results(title_post)
+
+
+run_order = [preprocess_indexes, preprocess_samples, train_patch_classifier, inference_on_train_pre, 
+create_hnm_patches, retrain_patch_classifier_hnm, inference_on_train_post, inference_on_valid_pre, 
+inference_on_valid_post, preprocess_test_index, inference_on_test_pre, inference_on_test_post,
+calculate_patch_level_results, calculate_slide_level_results_pre, calculate_slide_level_results_post,
+calculate_lesion_level_results_valid, calculate_lesion_level_results_test]
