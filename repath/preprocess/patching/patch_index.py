@@ -331,6 +331,7 @@ class SlidesIndex(Sequence):
         """
         columns = ['slide_idx', 'csv_path', 'level', 'patch_size']
         index_df = pd.DataFrame(columns=columns)
+        output_dir.mkdir(parents=True, exist_ok=True)
         for ps in self.patches:
             # save out the csv file for this slide
             csv_path = ps.slide_path.with_suffix('.csv')
@@ -347,7 +348,6 @@ class SlidesIndex(Sequence):
 
         # tidy up a bit and save the csv
         index_df = index_df.astype({"level": int, "patch_size": int})
-        output_dir.mkdir(parents=True, exist_ok=True)
         index_df.to_csv(output_dir / 'index.csv', index=False)
 
     @classmethod

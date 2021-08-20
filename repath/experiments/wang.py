@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning import seed_everything
 import torch
 import torch.nn as nn
 import numpy as np
@@ -142,6 +143,8 @@ def train_patch_classifier() -> None:
     """ Trains a classifier on the train patches and validates on validation patches.
     """
     set_seed(global_seed)
+    seed_everything(global_seed)
+    
     # transforms
     transform = Compose([
         RandomRotation((0, 360)),

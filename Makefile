@@ -34,8 +34,8 @@ endif
 
 ## install the requirements into the python environment
 requirements: install_curl install_asap install_openslide
-	sudo conda env update --file environment.yml
-	sudo pip install -r requirements.txt
+	conda env update --file environment.yml
+	pip install -r requirements.txt
 
 ## save the python environment so it can be recreated
 export_environment:
