@@ -15,6 +15,7 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.data.datasets.dataset import Dataset
+from repath.preprocess.augmentation.augments import RandomRotateFromList
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
@@ -46,6 +47,7 @@ class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
         self.model = GoogLeNet(num_classes=2)
+        self.model.dropout = nn.Dropout(0.5)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -83,8 +85,7 @@ class PatchClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.model.parameters(), 
-                                    lr=0.01, 
-                                    momentum=0.9, 
+                                    lr=0.01,
                                     weight_decay=0.0005)
         scheduler = {
             'scheduler': torch.optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.5),
@@ -110,8 +111,8 @@ def preprocess_indexes() -> None:
 
     # do the train validate split
     train, valid = split_camelyon16(train_patches, 0.8)
-    train.save(experiment_root / "train_index")
-    valid.save(experiment_root / "valid_index")
+    train.save(experiment_root / "train_index2")
+    valid.save(experiment_root / "valid_index2")
 
 
 def preprocess_samples() -> None:
@@ -147,10 +148,10 @@ def train_patch_classifier() -> None:
     
     # transforms
     transform = Compose([
-        RandomRotation((0, 360)),
+        RandomRotateFromList([0.0, 90.0, 180.0, 270.0]),
         RandomCrop((224, 224)),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ToTensor() #,
+        # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # prepare our data
@@ -169,7 +170,7 @@ def train_patch_classifier() -> None:
         monitor="val_accuracy",
         dirpath=experiment_root / "patch_model",
         filename=f"checkpoint",
-        save_top_k=1,
+        save_last=True,
         mode="max",
     )
 

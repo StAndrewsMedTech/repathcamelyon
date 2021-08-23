@@ -1,3 +1,6 @@
+import random
+from typing import List
+
 import torchvision.transforms.functional as TF
 
 class Rotate(object):
@@ -26,4 +29,17 @@ class FlipRotate(object):
         """
         image = TF.hflip(img)
         image = TF.rotate(image, angle=self.angle)
+        return image
+
+class RandomRotateFromList(object):
+    def __init__(self, angles: List[float]) -> None:
+        super().__init__()
+        self.angles = angles
+
+    def __call__(self, img):
+        # select angle
+        angle = random.choice(self.angles)
+
+        # apply angle
+        image = TF.rotate(img, angle=angle)
         return image
