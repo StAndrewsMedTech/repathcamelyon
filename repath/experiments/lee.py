@@ -145,8 +145,8 @@ def train_patch_classifier() -> None:
     # transforms
     transform = Compose([
         RandomCrop((240, 240)),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ToTensor() #,
+        # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # prepare our data
@@ -247,8 +247,8 @@ def retrain_patch_classifier_hnm() -> None:
     # transforms
     transform = Compose([
         RandomCrop((240, 240)),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ToTensor() #,
+        # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # prepare our data

@@ -111,8 +111,8 @@ def preprocess_indexes() -> None:
 
     # do the train validate split
     train, valid = split_camelyon16(train_patches, 0.8)
-    train.save(experiment_root / "train_index2")
-    valid.save(experiment_root / "valid_index2")
+    train.save(experiment_root / "train_index")
+    valid.save(experiment_root / "valid_index")
 
 
 def preprocess_samples() -> None:
@@ -127,9 +127,9 @@ def preprocess_samples() -> None:
     print("read valid index")
 
     # sample from train and valid sets
-    train_samples = balanced_sample([train], 2000000)
+    train_samples = balanced_sample([train], 20000)
     print("balanced train sample")
-    valid_samples = balanced_sample([valid], 500000)
+    valid_samples = balanced_sample([valid], 5000)
     print("balanced valid sample")
 
     train_samples.save(experiment_root / "train_samples")
@@ -251,10 +251,10 @@ def retrain_patch_classifier_hnm() -> None:
     set_seed(global_seed)
     # transforms
     transform = Compose([
-        RandomRotation((0, 360)),
+        RandomRotateFromList([0.0, 90.0, 180.0, 270.0]),
         RandomCrop((224, 224)),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ToTensor() #,
+        # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # prepare our data
@@ -273,16 +273,8 @@ def retrain_patch_classifier_hnm() -> None:
         monitor="val_accuracy",
         dirpath=experiment_root / "patch_model_hnm",
         filename=f"checkpoint",
-        save_top_k=1,
+        save_last=True,
         mode="max",
-    )
-
-    early_stop_callback = EarlyStopping(
-        monitor='val_accuracy',
-        min_delta=0.00,
-        patience=5,
-        verbose=False,
-        mode='max'
     )
 
     # create a logger
@@ -293,7 +285,7 @@ def retrain_patch_classifier_hnm() -> None:
     #classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
     torch.manual_seed(global_seed)
     classifier = PatchClassifier()
-    trainer = pl.Trainer(resume_from_checkpoint=cp_path, callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15, 
+    trainer = pl.Trainer(resume_from_checkpoint=cp_path, callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=3, 
                      logger=csv_logger, deterministic=True)
     trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
 
