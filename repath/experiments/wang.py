@@ -182,7 +182,7 @@ def train_patch_classifier() -> None:
     classifier = PatchClassifier()
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=3, 
                      logger=csv_logger, deterministic=True)
-    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+    trainer.fit(classifier, train_dataloaders=train_loader, val_dataloaders=valid_loader)
 
 
 def inference_on_train_pre() -> None:
