@@ -3,6 +3,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning import seed_everything
+from pytorch_lightning.plugins import DDPPlugin
 import torch
 import torch.nn as nn
 import numpy as np
@@ -15,7 +16,7 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.data.datasets.dataset import Dataset
-from repath.preprocess.augmentation.augments import RandomRotateFromList
+from repath.preprocess.augmentation.augments import RandomRotateFromList, RnadomCropSpecifyOffset
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
@@ -37,16 +38,15 @@ tissue_detector = TissueDetectorOTSU()
 global_seed = 123
 
 def seed_worker(worker_id):
-    worker_seed = global_seed % 2**32
-    np.random.seed(worker_seed)
-    random.seed(worker_seed)
+    worker_seed = torch.initial_seed() % 2 ** 32
+    set_seed(worker_seed)
 
 
 class PatchClassifier(pl.LightningModule):
     
     def __init__(self) -> None:
         super().__init__()
-        self.model = GoogLeNet(num_classes=2)
+        self.model = GoogLeNet(num_classes=2, init_weights=True)
         self.model.dropout = nn.Dropout(0.5)
 
     def training_step(self, batch, batch_idx):
@@ -132,8 +132,8 @@ def preprocess_samples() -> None:
     valid_samples = balanced_sample([valid], 5000)
     print("balanced valid sample")
 
-    train_samples.save(experiment_root / "train_samples")
-    valid_samples.save(experiment_root / "valid_samples")
+    train_samples.save(experiment_root / "train_samples2")
+    valid_samples.save(experiment_root / "valid_samples2")
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
@@ -143,13 +143,15 @@ def preprocess_samples() -> None:
 def train_patch_classifier() -> None:
     """ Trains a classifier on the train patches and validates on validation patches.
     """
+    print("Training patch classifier for Wang.")
+
     set_seed(global_seed)
-    seed_everything(global_seed)
+    #seed_everything(global_seed, workers=True)
     
     # transforms
     transform = Compose([
         RandomRotateFromList([0.0, 90.0, 180.0, 270.0]),
-        RandomCrop((224, 224)),
+        RnadomCropSpecifyOffset(32),
         ToTensor() #,
         # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -168,21 +170,21 @@ def train_patch_classifier() -> None:
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
-        dirpath=experiment_root / "patch_model",
+        dirpath=experiment_root / "patch_model2",
         filename=f"checkpoint",
         save_last=True,
         mode="max",
     )
 
     # create a logger
-    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier2', version=0)
 
     # train our model
-    torch.manual_seed(global_seed)
+    #torch.manual_seed(global_seed)
     classifier = PatchClassifier()
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=3, 
-                     logger=csv_logger, deterministic=True)
-    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+                     logger=csv_logger, plugins=DDPPlugin(find_unused_parameters=False), deterministic=True)
+    trainer.fit(classifier, train_dataloaders=train_loader, val_dataloaders=valid_loader)
 
 
 def inference_on_train_pre() -> None:
@@ -263,10 +265,10 @@ def retrain_patch_classifier_hnm() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)   
     
     # create dataloaders
-    g = torch.Generator()
-    g.manual_seed(0)
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker, generator=g)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker, generator=g)
+    #g = torch.Generator()
+    #g.manual_seed(0)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
