@@ -21,7 +21,7 @@ from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
-from repath.models import GoogLeNet
+from repath.models.googlenet import GoogLeNet
 from repath.utils.seeds import set_seed
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.slide_level_metrics import SlideClassifierWang
@@ -170,14 +170,14 @@ def train_patch_classifier() -> None:
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
         monitor="val_accuracy",
-        dirpath=experiment_root / "patch_model2",
+        dirpath=experiment_root / "patch_model",
         filename=f"checkpoint",
         save_last=True,
         mode="max",
     )
 
     # create a logger
-    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier2', version=0)
 
     # train our model
     #torch.manual_seed(global_seed)
