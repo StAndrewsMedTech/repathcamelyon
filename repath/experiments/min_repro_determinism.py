@@ -7,8 +7,10 @@ from pytorch_lightning.plugins import DDPPlugin
 import numpy as np
 import random
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
+from torchvision.models import GoogLeNet
 from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 
 
@@ -23,7 +25,11 @@ random.seed(global_seed)
 
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2 ** 32
-    set_seed(worker_seed)
+    torch.backends.cudnn.deterministic=True
+    torch.manual_seed(worker_seed)
+    torch.cuda.manual_seed(worker_seed)
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 
 class PatchClassifier(pl.LightningModule):
