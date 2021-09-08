@@ -46,7 +46,7 @@ class RandomRotateFromList(object):
         return image
     
     
-class RnadomCropSpecifyOffset(object):
+class RandomCropSpecifyOffset(object):
     def __init__(self, size_diff: int) -> None:
         super().__init__()
         self.size_diff = size_diff

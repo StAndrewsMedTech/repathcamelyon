@@ -16,12 +16,12 @@ from torchvision.transforms import Compose, ToTensor, RandomCrop, RandomRotation
 from repath.utils.paths import project_root
 import repath.data.datasets.camelyon16 as camelyon16
 from repath.data.datasets.dataset import Dataset
-from repath.preprocess.augmentation.augments import RandomRotateFromList, RnadomCropSpecifyOffset
+from repath.preprocess.augmentation.augments import RandomRotateFromList, RandomCropSpecifyOffset
 from repath.preprocess.tissue_detection import TissueDetectorOTSU
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedIndex
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
-from torchvision.models import GoogLeNet
+from repath.models import GoogLeNet
 from repath.utils.seeds import set_seed
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.slide_level_metrics import SlideClassifierWang
@@ -46,7 +46,7 @@ class PatchClassifier(pl.LightningModule):
     
     def __init__(self) -> None:
         super().__init__()
-        self.model = GoogLeNet(num_classes=2, init_weights=True)
+        self.model = GoogLeNet(num_classes=2)
         self.model.dropout = nn.Dropout(0.5)
 
     def training_step(self, batch, batch_idx):
@@ -151,7 +151,7 @@ def train_patch_classifier() -> None:
     # transforms
     transform = Compose([
         RandomRotateFromList([0.0, 90.0, 180.0, 270.0]),
-        RnadomCropSpecifyOffset(32),
+        RandomCropSpecifyOffset(32),
         ToTensor() #,
         # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -177,7 +177,7 @@ def train_patch_classifier() -> None:
     )
 
     # create a logger
-    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier2', version=0)
+    csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier', version=0)
 
     # train our model
     #torch.manual_seed(global_seed)

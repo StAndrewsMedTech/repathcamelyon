@@ -87,6 +87,9 @@ class SlidePatchSetResults(SlidePatchSet):
 
         # find core patch size
         base_patch_size = self.patch_size - self.border
+        if self.stride is not None:
+            pool_size = int(base_patch_size / self.stride)
+            base_patch_size = self.stride
 
         # remove border and convert to column, row
         self.patches_df['column'] = np.divide(top_x, base_patch_size)
