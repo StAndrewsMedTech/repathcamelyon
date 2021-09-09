@@ -127,13 +127,13 @@ def preprocess_samples() -> None:
     print("read valid index")
 
     # sample from train and valid sets
-    train_samples = balanced_sample([train], 20000)
+    train_samples = balanced_sample([train], 2000000)
     print("balanced train sample")
-    valid_samples = balanced_sample([valid], 5000)
+    valid_samples = balanced_sample([valid], 500000)
     print("balanced valid sample")
 
-    train_samples.save(experiment_root / "train_samples2")
-    valid_samples.save(experiment_root / "valid_samples2")
+    train_samples.save(experiment_root / "train_samples")
+    valid_samples.save(experiment_root / "valid_samples")
 
     # save out all the patches
     train_samples.save_patches(experiment_root / "training_patches")
