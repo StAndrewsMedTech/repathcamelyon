@@ -68,12 +68,13 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
    
 class SlidePatchSetResults(SlidePatchSet):
     def __init__(self, slide_idx: int, dataset: Dataset, patch_size: int, level: int, patches_df: pd.DataFrame, 
-                 border: int = 0, jitter: int = 0) -> None:
+            border: int = 0, jitter: int = 0, stride:int =None) -> None:
         super().__init__(slide_idx, dataset, patch_size, level, patches_df)
         abs_slide_path, self.annotation_path, self.label, self.tags = dataset[slide_idx]
         self.slide_path = dataset.to_rel_path(abs_slide_path)
         self.border = border
         self.jitter = jitter
+        self.stride = stride
 
     def to_heatmap(self, class_name: str) -> np.array:
         self.patches_df.columns = [colname.lower() for colname in self.patches_df.columns]

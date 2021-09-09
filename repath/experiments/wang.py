@@ -192,7 +192,7 @@ def inference_on_train_pre() -> None:
     cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "pre_hnm_results" / "train16"
+    output_dir16 = experiment_root / "pre_hnm_results" / "train16_2"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
@@ -205,9 +205,9 @@ def inference_on_train_pre() -> None:
     mask = [sl in train_ol_slides for sl in train_data_cut_down.paths.slide]
     train_data_cut_down.paths = train_data_cut_down.paths[mask]
 
-    patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
-    train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
-    train_patches_grid.save(experiment_root / "train_index_grid")
+    #patch_finder = GridPatchFinder(labels_level=5, patch_level=0, patch_size=256, stride=256)
+    #train_patches_grid = SlidesIndex.index_dataset(train_data_cut_down, tissue_detector, patch_finder)
+    #train_patches_grid.save(experiment_root / "train_index_grid")
 
     train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
 
