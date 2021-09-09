@@ -22,7 +22,7 @@ from repath.preprocess.patching import GridPatchFinder, SlidesIndex, CombinedInd
 from repath.preprocess.sampling import split_camelyon16, balanced_sample, get_subset_of_dataset
 from repath.postprocess.results import SlidesIndexResults
 from repath.models.googlenet import GoogLeNet
-from repath.utils.seeds import set_seed
+from repath.utils.seeds import set_seed, seed_worker
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.slide_level_metrics import SlideClassifierWang
 from repath.postprocess.find_lesions import LesionFinderWang
@@ -36,10 +36,6 @@ experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorOTSU()
 
 global_seed = 123
-
-def seed_worker(worker_id):
-    worker_seed = torch.initial_seed() % 2 ** 32
-    set_seed(worker_seed)
 
 
 class PatchClassifier(pl.LightningModule):

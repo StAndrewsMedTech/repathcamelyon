@@ -16,3 +16,7 @@ def set_seed(global_seed):
     torch.cuda.manual_seed(global_seed)
     torch.cuda.manual_seed_all(global_seed)
 
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2 ** 32
+    set_seed(worker_seed)

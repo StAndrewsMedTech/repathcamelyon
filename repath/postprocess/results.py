@@ -20,7 +20,7 @@ from repath.preprocess.patching.patch_index import PatchSet, SlidesIndex, SlideP
 from repath.postprocess.prediction import evaluate_on_device
 from repath.utils.convert import remove_item_from_dict
 from torchvision.transforms import Compose
-from repath.utils.seeds import set_seed
+from repath.utils.seeds import seed_worker
 
 import os
 
@@ -33,7 +33,9 @@ def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, i
     for sps in si:
         dataset = SlideDataset(sps, transform, augments)
         dataset.open_slide()
-        test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size)
+        g = torch.Generator()
+        g.manual_seed(0)
+        test_loader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=batch_size,  worker_init_fn=seed_worker, generator=g)
         just_patch_classes = remove_item_from_dict(sps.dataset.labels, "background")
         num_classes = len(just_patch_classes)
         probs_out = evaluate_on_device(model, device, test_loader, num_classes, device_idx)
