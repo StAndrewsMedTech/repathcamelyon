@@ -20,6 +20,7 @@ from repath.preprocess.patching.patch_index import PatchSet, SlidesIndex, SlideP
 from repath.postprocess.prediction import evaluate_on_device
 from repath.utils.convert import remove_item_from_dict
 from torchvision.transforms import Compose
+from repath.utils.seeds import set_seed
 
 import os
 
