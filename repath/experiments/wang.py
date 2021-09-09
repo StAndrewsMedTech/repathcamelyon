@@ -212,9 +212,9 @@ def inference_on_train_pre() -> None:
     train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
@@ -254,7 +254,7 @@ def retrain_patch_classifier_hnm() -> None:
     # transforms
     transform = Compose([
         RandomRotateFromList([0.0, 90.0, 180.0, 270.0]),
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor() #,
         # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -313,9 +313,9 @@ def inference_on_train_post() -> None:
     train_patches_grid = SlidesIndex.load(train_data_cut_down, experiment_root / "train_index_grid")
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
@@ -349,9 +349,9 @@ def inference_on_valid_pre() -> None:
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
@@ -381,9 +381,9 @@ def inference_on_valid_post() -> None:
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     valid_results16 = SlidesIndexResults.predict(valid_patches_grid, classifier, transform, 128, output_dir16,
@@ -419,9 +419,9 @@ def inference_on_test_pre() -> None:
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
@@ -443,9 +443,9 @@ def inference_on_test_post() -> None:
     # using only the grid patches finds only 340 false positives, not enough to retrain so try using overlapping to create more patches
 
     transform = Compose([
-        RandomCrop((224, 224)),
+        RandomCropSpecifyOffset(32),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     test_results16 = SlidesIndexResults.predict(test_patches, classifier, transform, 128, output_dir16,
