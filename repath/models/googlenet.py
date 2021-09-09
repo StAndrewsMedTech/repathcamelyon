@@ -78,7 +78,7 @@ class GoogLeNet(nn.Module):
     ) -> None:
         super(GoogLeNet, self).__init__()
         if blocks is None:
-        blocks = [BasicConv2d, Inception, InceptionAux2]
+            blocks = [BasicConv2d, Inception, InceptionAux2]
         if init_weights is None:
             warnings.warn('The default weight initialization of GoogleNet will be changed in future releases of '
                           'torchvision. If you wish to keep the old behavior (which leads to long initialization times'

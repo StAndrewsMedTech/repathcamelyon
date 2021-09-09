@@ -162,7 +162,7 @@ g = torch.Generator()
 g.manual_seed(0)
 train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=1, worker_init_fn=seed_worker, generator=g)
 
-print(hash(next(iter(train_loader))[0]))
+#print(hash(next(iter(train_loader))[0]))
 exit()
 
 # train our model
