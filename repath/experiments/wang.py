@@ -188,7 +188,7 @@ def inference_on_train_pre() -> None:
     cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "pre_hnm_results" / "train16_2"
+    output_dir16 = experiment_root / "pre_hnm_results" / "train16"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
