@@ -214,7 +214,7 @@ def inference_on_train_pre() -> None:
     ])
 
     train_results16 = SlidesIndexResults.predict(train_patches_grid, classifier, transform, 128, output_dir16,
-                                                 results_dir_name, heatmap_dir_name, nthreads=2)
+                                                 results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     train_results16.save()
 
 
@@ -261,8 +261,8 @@ def retrain_patch_classifier_hnm() -> None:
     valid_set = ImageFolder(experiment_root / "validation_patches", transform=transform)   
     
     # create dataloaders
-    #g = torch.Generator()
-    #g.manual_seed(0)
+    g = torch.Generator()
+    g.manual_seed(0)
     train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
     valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
 
@@ -281,7 +281,7 @@ def retrain_patch_classifier_hnm() -> None:
     # train our model
     cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     #classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
-    torch.manual_seed(global_seed)
+    #torch.manual_seed(global_seed)
     classifier = PatchClassifier()
     trainer = pl.Trainer(resume_from_checkpoint=cp_path, callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=3, 
                      logger=csv_logger, deterministic=True)
