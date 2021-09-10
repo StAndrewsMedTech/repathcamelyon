@@ -20,14 +20,15 @@ from repath.preprocess.patching.patch_index import PatchSet, SlidesIndex, SlideP
 from repath.postprocess.prediction import evaluate_on_device
 from repath.utils.convert import remove_item_from_dict
 from torchvision.transforms import Compose
-from repath.utils.seeds import seed_worker
+from repath.utils.seeds import seed_worker, set_seed
 
 import os
 
 
-def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int, int, int, Path, str, str, List, List]) -> 'SlidePatchSetResults':
+def predict_slide(args: Tuple[SlidePatchSet, int, Compose, pl.LightningModule, int, int, int, Path, str, str, List, List, int]) -> 'SlidePatchSetResults':
     
-    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name, augments, heatmapclasses = args
+    si, device_idx, transform, model, batch_size, border, jitter, output_dir, results_dir_name, heatmap_dir_name, augments, heatmapclasses, global_seed = args
+    set_seed(global_seed)
     device = torch.device(f"cuda:{device_idx}" if torch.cuda.is_available() else "cpu")
     results_all = []
     for sps in si:
@@ -175,7 +176,7 @@ class SlidesIndexResults(SlidesIndex):
 
     @classmethod
     def predict(cls, slide_index: SlidesIndex, model, transform, batch_size, output_dir, results_dir_name, heatmap_dir_name, 
-                border=0, jitter=0, augments=None, nthreads=None, heatmap_classes=['tumor']) -> 'SlidesIndexResults':
+                border=0, jitter=0, augments=None, nthreads=None, heatmap_classes=['tumor'], global_seed=123) -> 'SlidesIndexResults':
         
         ### temp for debugging
 
@@ -214,7 +215,7 @@ class SlidesIndexResults(SlidesIndex):
         # spawn a process to predict for each slide
         slides = zip(not_processed, range(nthreads), [transform]*nthreads, [model]*nthreads, [batch_size]*nthreads, 
             [border] *nthreads, [jitter] * nthreads, [output_dir] *nthreads, [results_dir_name]*nthreads, 
-            [heatmap_dir_name]*nthreads, [augments]*nthreads, [heatmap_classes]*nthreads)
+            [heatmap_dir_name]*nthreads, [augments]*nthreads, [heatmap_classes]*nthreads, [global_seed*nthreads])
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()
