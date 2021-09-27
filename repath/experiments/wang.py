@@ -1,3 +1,5 @@
+import shutil
+
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -188,7 +190,7 @@ def inference_on_train_pre() -> None:
     cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
 
-    output_dir16 = experiment_root / "pre_hnm_results" / "train16"
+    output_dir16 = experiment_root / "pre_hnm_results" / "train16_3"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
@@ -220,7 +222,7 @@ def inference_on_train_pre() -> None:
 
 def create_hnm_patches() -> None:
     set_seed(global_seed)
-    input_dir16 = experiment_root / "pre_hnm_results" / "train16"
+    input_dir16 = experiment_root / "pre_hnm_results" / "train16_3"
 
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
@@ -263,8 +265,8 @@ def retrain_patch_classifier_hnm() -> None:
     # create dataloaders
     g = torch.Generator()
     g.manual_seed(0)
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
-    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker, generator=g)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size, num_workers=8, worker_init_fn=seed_worker, generator=g)
 
     # configure logging and checkpoints
     checkpoint_callback = ModelCheckpoint(
@@ -278,8 +280,14 @@ def retrain_patch_classifier_hnm() -> None:
     # create a logger
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
 
+    cp_path = experiment_root / "patch_model_hnm" / "checkpoint.ckpt"
+    (experiment_root / "patch_model_hnm").mkdir(exist_ok=True)
+
+    # copy the model so we can retain the orginal model
+    cp_src_path = experiment_root / "patch_model" / "checkpoint.ckpt"
+    shutil.copyfile(cp_src_path, cp_path)
+
     # train our model
-    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     #classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
     #torch.manual_seed(global_seed)
     classifier = PatchClassifier()

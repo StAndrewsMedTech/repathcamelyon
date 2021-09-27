@@ -215,7 +215,7 @@ class SlidesIndexResults(SlidesIndex):
         # spawn a process to predict for each slide
         slides = zip(not_processed, range(nthreads), [transform]*nthreads, [model]*nthreads, [batch_size]*nthreads, 
             [border] *nthreads, [jitter] * nthreads, [output_dir] *nthreads, [results_dir_name]*nthreads, 
-            [heatmap_dir_name]*nthreads, [augments]*nthreads, [heatmap_classes]*nthreads, [global_seed*nthreads])
+            [heatmap_dir_name]*nthreads, [augments]*nthreads, [heatmap_classes]*nthreads, [global_seed]*nthreads)
         pool = Pool()
         results = pool.map(predict_slide, slides)
         pool.close()

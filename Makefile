@@ -26,7 +26,8 @@ JUPYTER_PORT := 8881
 ## set up the python environment
 create_environment:
 ifeq (True,$(HAS_CONDA))
-	conda create --name $(PROJECT_NAME) python=$(PYTHON_VERSION)
+	conda create --name
+	 $(PROJECT_NAME) python=$(PYTHON_VERSION)
 	@echo ">>> New conda env created. Activate with:\nsource activate $(PROJECT_NAME)"
 else
 	@echo "Conda is not installed. Please install it."
