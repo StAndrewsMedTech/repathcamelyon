@@ -18,7 +18,7 @@ def get_subset_of_dataset(slides_index_to_match, whole_dataset):
     # create new dataset initially with both training and valid
     dataset_subset = whole_dataset
     # chop new dataset down to be just slide in valid set
-    mask = [sl in str(slides_to_match) for sl in dataset_subset.paths.slide]
+    mask = [str(sl) in str(slides_to_match) for sl in dataset_subset.paths.slide]
     dataset_subset.paths = dataset_subset.paths[mask]
 
 
