@@ -280,12 +280,12 @@ def retrain_patch_classifier_hnm() -> None:
     # create a logger
     csv_logger = pl_loggers.CSVLogger(experiment_root / 'logs', name='patch_classifier_hnm', version=0)
 
-    cp_path = experiment_root / "patch_model_hnm" / "checkpoint.ckpt"
+    cp_path = experiment_root / "patch_model" / "checkpoint.ckpt"
     (experiment_root / "patch_model_hnm").mkdir(exist_ok=True)
 
     # copy the model so we can retain the orginal model
-    cp_src_path = experiment_root / "patch_model" / "checkpoint.ckpt"
-    shutil.copyfile(cp_src_path, cp_path)
+    #cp_src_path = experiment_root / "patch_model" / "checkpoint.ckpt"
+    #shutil.copyfile(cp_src_path, cp_path)
 
     # train our model
     #classifier = PatchClassifier.load_from_checkpoint(checkpoint_path=cp_path)
@@ -496,7 +496,7 @@ def calculate_slide_level_results_pre() -> None:
     results_dir_name = "results"
     heatmap_dir_name = "heatmaps"
 
-    trainresultsin_pre = experiment_root / "pre_hnm_results" / "train16" 
+    trainresultsin_pre = experiment_root / "pre_hnm_results" / "train16_3" 
     validresultsin_pre = experiment_root / "pre_hnm_results" / "valid16" 
     testresultsin_pre = experiment_root / "pre_hnm_results" / "test16" 
 
@@ -569,7 +569,7 @@ def calculate_lesion_level_results_valid() -> None:
 
     results_out_post = experiment_root / "post_hnm_results" / "lesion_results" / "valid16"
 
-    mask_dir = project_root() / 'experiments' / 'masks' / 'camelyon16' / 'training'
+    mask_dir = project_root() / 'data' / 'camelyon16' / 'raw' / 'testing' / 'evaluation' / 'masks'
 
     title_post = experiment_name + " experiment, post hnm model, Camelyon 16 valid dataset"
 
