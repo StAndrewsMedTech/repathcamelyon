@@ -16,6 +16,7 @@ from repath.utils.paths import project_root
 from repath.data.datasets.dataset import Dataset
 import repath.data.datasets.camelyon16 as camelyon16
 import repath.data.datasets.camelyon17 as camelyon17
+from repath.preprocess.augmentation.augments import RandomRotateFromList, RandomCropSpecifyOffset
 from repath.preprocess.tissue_detection import TissueDetectorGreyScale
 from repath.preprocess.patching import GridPatchFinder, SlidesIndex
 from repath.preprocess.sampling import split_camelyon16, split_camelyon17, balanced_sample, get_subset_of_dataset
@@ -23,7 +24,7 @@ from repath.postprocess.results import SlidesIndexResults
 from repath.postprocess.patch_level_results import patch_level_metrics
 from repath.postprocess.slide_level_metrics import SlideClassifierLee
 from repath.postprocess.patient_level_metrics import calc_patient_level_metrics
-from repath.utils.seeds import set_seed
+from repath.utils.seeds import set_seed, seed_worker
 from repath.postprocess.find_lesions import LesionFinderLee
 
 """
@@ -34,14 +35,6 @@ experiment_root = project_root() / "experiments" / experiment_name
 tissue_detector = TissueDetectorGreyScale()
 
 global_seed = 123
-"""
-
-"""
-
-def seed_worker(worker_id):
-    worker_seed = global_seed % 2**32
-    np.random.seed(worker_seed)
-    random.seed(worker_seed)
 
 class PatchClassifier(pl.LightningModule):
     def __init__(self) -> None:
@@ -64,7 +57,7 @@ class PatchClassifier(pl.LightningModule):
         correct = pred.argmax(dim=1).eq(y).sum().item()
         total = len(y)
         accu = correct / total
-        self.log(f"{label}_accuracy", accu, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{label}_accuracy", loss, on_step=False, on_epoch=True, sync_dist=True)
 
         return loss
 
@@ -144,7 +137,7 @@ def train_patch_classifier() -> None:
     set_seed(global_seed)
     # transforms
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor() #,
         # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -164,7 +157,7 @@ def train_patch_classifier() -> None:
         monitor="val_accuracy",
         dirpath=experiment_root / "patch_model",
         filename=f"checkpoint",
-        save_top_k=1,
+        save_last=True,
         mode="max",
     )
 
@@ -182,8 +175,8 @@ def train_patch_classifier() -> None:
     # train our model
     classifier = PatchClassifier()
     trainer = pl.Trainer(callbacks=[checkpoint_callback], gpus=8, accelerator="ddp", max_epochs=15,
-                         logger=csv_logger, deterministic=True)
-    trainer.fit(classifier, train_dataloader=train_loader, val_dataloaders=valid_loader)
+                         logger=csv_logger, plugins=DDPPlugin(find_unused_parameters=False), deterministic=True)
+    trainer.fit(classifier, train_dataloaders=train_loader, val_dataloaders=valid_loader)
 
 
 def inference_on_train() -> None:
@@ -201,17 +194,19 @@ def inference_on_train() -> None:
     train17 = SlidesIndex.load(camelyon17.training(), experiment_root / "train_index17")
 
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, 
+                                                         global_seed=global_seed)
     train_results16.save()
 
     train_results17 = SlidesIndexResults.predict(train17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, 
+                                                         global_seed=global_seed)
     train_results17.save()
 
 
@@ -239,14 +234,14 @@ def create_hnm_patches() -> None:
 
     train_results.patches_df = hnm_patches_df
 
-    train_results.save_patches(experiment_root / "training_patches", affix='-hnm')
+    train_results.save_patches(experiment_root / "training_patches", affix='-hnm', add_patches=True)
 
 
 def retrain_patch_classifier_hnm() -> None:
     set_seed(global_seed)
     # transforms
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor() #,
         # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -310,17 +305,17 @@ def inference_on_train() -> None:
     # valid17.patches = valid17[0:32]
 
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     train_results16 = SlidesIndexResults.predict(train16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     train_results16.save()
 
     train_results17 = SlidesIndexResults.predict(train17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     train_results17.save()
 
 
@@ -342,17 +337,17 @@ def inference_on_valid() -> None:
     # valid17.patches = valid17[0:32]
 
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     valid_results16 = SlidesIndexResults.predict(valid16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     valid_results16.save()
 
     valid_results17 = SlidesIndexResults.predict(valid17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     valid_results17.save()
 
 
@@ -392,17 +387,17 @@ def inference_on_test() -> None:
     # valid17.patches = valid17[0:32]
 
     transform = Compose([
-        RandomCrop((240, 240)),
+        RandomCropSpecifyOffset(16),
         ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     test_results16 = SlidesIndexResults.predict(test16, classifier, transform, 128, output_dir16,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     test_results16.save()
 
     test_results17 = SlidesIndexResults.predict(test17, classifier, transform, 128, output_dir17,
-                                                         results_dir_name, heatmap_dir_name, nthreads=2)
+                                                         results_dir_name, heatmap_dir_name, nthreads=2, global_seed=global_seed)
     test_results17.save()
 
 
